@@ -112,7 +112,7 @@
     box.innerHTML = '';
     var legal = st.legal || [];
     var canPlay = st.phase === 'play' && st.turnSeat === 0;
-    var dealing = st.phase === 'deal';
+    var dealing = st.phase === 'deal' || st.phase === 'dealing';
     var weisIds = st.humanWeisIds || [];
     var hand = st.hands[0] || [];
     box.classList.toggle('many', hand.length > 9);
@@ -152,8 +152,10 @@
   function renderCenter(st, settings) {
     var msg = '';
     var ev = st.lastEvent;
-    if (st.phase === 'deal') {
+    if (st.phase === 'deal' || st.phase === 'dealing') {
       msg = 'Karten werden gemischt …';
+    } else if (st.phase === 'aborted') {
+      msg = 'Runde abgebrochen' + (st.abortReason ? ': ' + st.abortReason : '') + '. Neue Runde gleich …';
     } else if (st.phase === 'play') {
       if (st.turnSeat === null) msg = '';
       else if (st.turnSeat === 0) msg = 'Du bist dran';

@@ -42,18 +42,35 @@
     this.hold = false;             // Pause nach dem ersten Stich (Weis zeigen)
     this.gameWinner = null;
     this.lastEvent = null;
+    // Verdeckte Karten (Online): Plätze, deren Karten dieser Engine nicht bekannt sind.
+    this.remoteSeats = (cfg.remoteSeats || []).slice();
+    this.dealHook = cfg.dealHook || null;      // function(engine, rid): verteilt verdeckt, ruft setDealt auf
+    this.revealCards = cfg.revealCards || null; // function(seat, positions) -> Promise<Karten>
+    this.roundId = 0;                          // erhöht sich bei jeder neuen Runde und jedem Abbruch
+    this.dealerBefore = this.dealer;
+    this.hands = [[], [], [], []];
+    this.pendingAct = [false, false, false, false];
+    this.abortReason = '';
   }
 
   Game.prototype.emit = function () { this.onUpdate(this); };
+
+  // Platz, dessen Karten dieser Engine nicht bekannt sind (Mensch über das Netz).
+  Game.prototype.isRemote = function (seat) { return this.remoteSeats.indexOf(seat) >= 0; };
+
+  // Hat der fremde Platz noch einen Platzhalter an dieser Kartenposition?
+  Game.prototype.hasPlaceholder = function (seat, pos) {
+    return (this.hands[seat] || []).some(function (h) { return h.remote && h.pos === pos; });
+  };
 
   // Altes Spiel beenden (z. B. beim Reset): keine weiteren Timer mehr.
   Game.prototype.stop = function () { this.stopped = true; };
 
   // Pause: Spiel hält an, bis "Weiter" gedrückt wird oder 5 Sekunden vorbei sind.
   Game.prototype.holdWeis = function () {
-    var self = this;
+    var self = this, rid = this.roundId;
     this.hold = true;
-    this.sched(function () { if (self.hold) self.releaseHold(); }, 5000);
+    this.sched(function () { if (self.hold && rid === self.roundId) self.releaseHold(); }, 5000);
   };
 
   Game.prototype.releaseHold = function () {
@@ -64,11 +81,11 @@
   };
 
   Game.prototype.wait = function (ms, fn) {
-    var self = this;
+    var self = this, rid = this.roundId;
     if (this.pending || this.stopped) return;
     this.pending = true;
     this.sched(function () {
-      if (self.stopped) return;
+      if (self.stopped || rid !== self.roundId) return;   // alte Runde: nichts mehr tun
       self.pending = false;
       if (fn) fn();
       self.emit();
@@ -78,11 +95,11 @@
 
   Game.prototype.startRound = function () {
     this.hold = false;
+    this.roundId++;
+    this.dealerBefore = this.dealer;
     this.roundNo++;
     if (this.roundNo > 1) this.dealer = (this.dealer + 1) % 4;
     this.vorhand = (this.dealer + 1) % 4;
-    var deck = R.shuffle(R.makeDeck(), this.rnd);
-    this.hands = [0, 1, 2, 3].map(function (s) { return deck.slice(s * 9, s * 9 + 9); });
     this.trump = null;
     this.plays = [];
     this.wonTricks = [[], []];
@@ -100,12 +117,35 @@
     this.annCounter = 0;
     this.weisRes = null;     // Gewinner der Weisen, nach dem ersten Stich
     this.lastScore = null;
+    this.pendingAct = [false, false, false, false];
+    this.canSchieben = true;
+    this.schellen7Holder = -1;
+    this.chooser = this.vorhand;
+    this.hands = [[], [], [], []];
 
+    if (this.dealHook) {
+      // Verdeckte Verteilung (Online). Die Engine macht weiter, sobald setDealt aufgerufen wird.
+      this.phase = 'dealing';
+      this.emit();
+      this.dealHook(this, this.roundId);
+      return;
+    }
+    var deck = R.shuffle(R.makeDeck(), this.rnd);
+    var hands = [0, 1, 2, 3].map(function (s) { return deck.slice(s * 9, s * 9 + 9); });
+    this.setDealt(hands, null, this.roundId);
+  };
+
+  // Karten sind verteilt. hands[s]: Karten (lokale Plätze) oder Platzhalter (fremde Plätze).
+  // info.s7[s]: Platz s hat die Schellen-7 (nur mit cfg.schellen7 wichtig).
+  Game.prototype.setDealt = function (hands, info, rid) {
+    if (rid !== undefined && rid !== this.roundId) return false;
+    this.hands = hands;
     var holder = -1;
     if (this.cfg.schellen7) {
-      this.hands.forEach(function (h, s) {
-        if (h.some(function (c) { return c.s === 'S' && c.r === '7'; })) holder = s;
+      var s7 = (info && info.s7) || hands.map(function (h) {
+        return h.some(function (c) { return c.s === 'S' && c.r === '7'; });
       });
+      for (var s = 0; s < 4; s++) if (s7[s]) holder = s;
     }
     // Schellen-7 bestimmt den Trumpf statt der Vorhand. Schieben bleibt erlaubt.
     this.schellen7Holder = holder;
@@ -114,6 +154,24 @@
     this.phase = 'deal';
     this.emit();
     this.tick();
+    return true;
+  };
+
+  // Runde abbrechen (z. B. Verbindung weg, Beweis falsch). Punkte bleiben. Neue Runde nach 3 s.
+  Game.prototype.abortRound = function (reason) {
+    if (this.phase === 'aborted' || this.phase === 'roundEnd' || this.phase === 'gameEnd') return;
+    this.roundId++;
+    this.pending = false;
+    this.hold = false;
+    this.roundNo--;
+    this.dealer = this.dealerBefore;
+    this.phase = 'aborted';
+    this.abortReason = reason || '';
+    this.hands = [[], [], [], []];
+    this.pendingAct = [false, false, false, false];
+    this.emit();
+    var self = this;
+    this.sched(function () { if (!self.stopped && self.phase === 'aborted') self.startRound(); }, 3000);
   };
 
   // Ruft den nächsten automatischen Schritt auf (KI oder Timer).
@@ -149,19 +207,49 @@
   // Weis ansagen. Nur im ersten Stich auf dem eigenen Zug, nur einmal.
   Game.prototype.announceWeis = function (seat) {
     if (!this.cfg.weis || this.trickNo !== 0 || this.phase !== 'play') return false;
-    if (this.turnSeat() !== seat || this.weisDecided[seat]) return false;
+    if (this.turnSeat() !== seat || this.weisDecided[seat] || this.isRemote(seat)) return false;
+    return this.applyWeis(seat, this.hands[seat]);
+  };
+
+  // Weis mit den Karten dieses Platzes werten. Die Karten sind bekannt (lokal oder offen gelegt).
+  Game.prototype.applyWeis = function (seat, cards) {
     this.weisDecided[seat] = true;
-    var best = R.bestWeis(this.hands[seat]);
-    if (best) this.weisAnn.push({ seat: seat, best: best, total: R.weisTotal(this.hands[seat]), order: ++this.annCounter });
-    var total = best ? R.weisTotal(this.hands[seat]) : null;
+    // Jede Karte nur einmal zählen (sonst würde eine Karte als Vierling gewertet).
+    var seen = {};
+    cards = cards.filter(function (c) { if (seen[c.id]) return false; seen[c.id] = true; return true; });
+    var best = R.bestWeis(cards);
+    var total = best ? R.weisTotal(cards) : null;
+    if (best) this.weisAnn.push({ seat: seat, best: best, total: total, order: ++this.annCounter });
     this.lastEvent = total ? { type: 'weis', seat: seat, label: total.label, pts: total.pts } : this.lastEvent;
     return !!best;
   };
 
-  // Ids der Karten des eigenen angesagten Weis (zum Hervorheben), sonst [].
+  // Fremder Platz sagt Weis an: die Weis-Karten werden offen gelegt, dann gewertet.
+  Game.prototype.requestWeis = function (seat, positions) {
+    if (!this.cfg.weis || this.phase !== 'play' || this.trickNo !== 0 || !this.isRemote(seat)) return false;
+    if (this.turnSeat() !== seat || this.weisDecided[seat] || this.pendingAct[seat] || !this.revealCards) return false;
+    if (!positions || !positions.length || new Set(positions).size !== positions.length) return false;
+    if (!positions.every(function (p) { return this.hasPlaceholder(seat, p); }, this)) return false;
+    this.pendingAct[seat] = true;
+    var self = this, rid = this.roundId;
+    this.revealCards(seat, positions).then(function (cards) {
+      if (rid !== self.roundId) return;
+      self.pendingAct[seat] = false;
+      self.announceRevealed(seat, cards);
+    }, function (err) {
+      if (rid !== self.roundId) return;
+      self.pendingAct[seat] = false;
+      self.abortRound(err && err.message ? err.message : 'Fehler beim Weis');
+    });
+    return true;
+  };
 
-
-  // Die beste Weisen-Kombination des Menschen (für die Schaltfläche), oder null.
+  Game.prototype.announceRevealed = function (seat, cards) {
+    if (this.phase !== 'play' || this.trickNo !== 0 || this.turnSeat() !== seat || this.weisDecided[seat]) return false;
+    var ok = this.applyWeis(seat, cards);
+    this.emit();
+    return ok;
+  };
 
   Game.prototype.aiTrump = function () {
     var d = this.aiFor(this.chooser).chooseTrump(this.hands[this.chooser], { canSchieben: this.canSchieben });
@@ -195,22 +283,32 @@
     this.lastEvent = { type: 'trump', suit: suit, seat: this.chooser };
   };
 
-  // Karte spielen. Gibt false zurück, wenn die Karte nicht erlaubt ist.
+  // Karte spielen (lokaler Platz). Gibt false zurück, wenn die Karte nicht erlaubt ist.
   Game.prototype.playCard = function (seat, card) {
-    if (this.phase !== 'play' || this.turnSeat() !== seat) return false;
+    if (this.phase !== 'play' || this.turnSeat() !== seat || this.isRemote(seat)) return false;
     var legal = R.legalCards(this.hands[seat], this.plays, this.trump);
     if (!legal.some(function (c) { return c.id === card.id; })) return false;
+    return this.commitPlay(seat, card, {}, function () {
+      this.hands[seat] = this.hands[seat].filter(function (c) { return c.id !== card.id; });
+    }.bind(this));
+  };
 
+  // Gemeinsamer Teil jedes Zuges: Karte auf den Stich, Stöck prüfen.
+  // claims.stoeck (fremder Platz): Besitzer hält K und O des Trumpfs (bei der zweiten Karte gilt es).
+  Game.prototype.commitPlay = function (seat, card, claims, removeFromHand) {
     // Wer im ersten Stich spielt, ohne anzusagen, verzichtet auf seinen Weis.
     if (this.trickNo === 0 && !this.weisDecided[seat]) this.weisDecided[seat] = true;
     if (this.lastEvent && (this.lastEvent.type === 'stoeck' || this.lastEvent.type === 'weis')) this.lastEvent = null;
 
-    this.hands[seat] = this.hands[seat].filter(function (c) { return c.id !== card.id; });
+    removeFromHand();
     this.plays.push({ seat: seat, card: card });
 
     if (this.cfg.stoeck && this.trump && card.s === this.trump && (card.r === 'K' || card.r === 'O')) {
       this.playedKO[seat].push(card.r);
-      if (this.stoeckPair[seat] && this.playedKO[seat].length === 2) {
+      // Stöck: K und O des Trumpfs nach der Trumpfwahl gespielt. Dann hatte der Platz beide schon
+      // bei der Trumpfwahl auf der Hand (Karten verschwinden nur durch Spielen). Das prüft jeder
+      // selbst aus den offenen Karten, ohne Angabe des Geräts.
+      if (this.playedKO[seat].length === 2) {
         this.stoeck[seat % 2] += R.STOECK_PTS;
         this.lastEvent = { type: 'stoeck', seat: seat };
       }
@@ -218,6 +316,35 @@
     this.emit();
     this.tick();
     return true;
+  };
+
+  // Karte eines fremden Platzes: erst offen legen (cfg.revealCards), dann spielen.
+  // pos: Kartenposition aus der verdeckten Verteilung. claims: z. B. {stoeck: true}.
+  Game.prototype.requestPlay = function (seat, pos, claims) {
+    if (this.phase !== 'play' || this.turnSeat() !== seat || !this.isRemote(seat)) return false;
+    if (this.pendingAct[seat] || !this.revealCards || !this.hasPlaceholder(seat, pos)) return false;
+    this.pendingAct[seat] = true;
+    var self = this, rid = this.roundId;
+    this.revealCards(seat, [pos]).then(function (cards) {
+      if (rid !== self.roundId) return;
+      self.pendingAct[seat] = false;
+      self.playRemote(seat, pos, cards[0], claims);
+    }, function (err) {
+      if (rid !== self.roundId) return;
+      self.pendingAct[seat] = false;
+      self.abortRound(err && err.message ? err.message : 'Fehler beim Ausspielen');
+    });
+    return true;
+  };
+
+  // Offen gelegte Karte eines fremden Platzes spielen. Der Zug selbst wurde schon geprüft (Besitz, Zug).
+  // Die Regel "Farbe bedienen" kann der Host nicht prüfen (er kennt die Hand nicht). Das prüft das Gerät des Spielers.
+  Game.prototype.playRemote = function (seat, pos, card, claims) {
+    if (this.phase !== 'play' || this.turnSeat() !== seat || !this.isRemote(seat)) return false;
+    if (!this.hasPlaceholder(seat, pos) || !card || !card.id) return false;
+    return this.commitPlay(seat, card, claims || {}, function () {
+      this.hands[seat] = this.hands[seat].filter(function (h) { return !(h.remote && h.pos === pos); });
+    }.bind(this));
   };
 
   Game.prototype.aiPlay = function () {
@@ -300,6 +427,7 @@
   Game.prototype.autoMove = function (seat) {
     if (this.hold) return this.releaseHold();
     if (this.phase === 'roundEnd') return this.nextRound();
+    if (this.isRemote(seat)) return false;   // Karten dieses Platzes kennt nur sein Gerät
     if (this.phase === 'trump' && this.chooser === seat) {
       var d = this.aiFor(seat).chooseTrump(this.hands[seat], { canSchieben: this.canSchieben });
       if (d.action === 'schieben') return this.schiebenBy(seat);
@@ -369,18 +497,21 @@
 
   Game.prototype.legalFor = function (seat) {
     if (this.phase !== 'play' || this.turnSeat() !== seat || this.plays.length === 4) return [];
+    if (this.isRemote(seat)) return [];   // wird auf dem Gerät des Spielers berechnet
     return R.legalCards(this.hands[seat], this.plays, this.trump).map(function (c) { return c.id; });
   };
 
   Game.prototype.humanWeisIds = function (seat) {
     if (seat === undefined) seat = this.humanSeat;
     if (this.phase !== 'play' || this.trickNo !== 0 || this.turnSeat() !== seat || this.weisDecided[seat]) return [];
+    if (this.isRemote(seat)) return [];
     var t = R.weisTotal(this.hands[seat] || []);
     return t ? t.cards.map(function (c) { return c.id; }) : [];
   };
 
   Game.prototype.humanBestWeis = function (seat) {
     if (seat === undefined) seat = this.humanSeat;
+    if (this.isRemote(seat)) return null;
     return R.weisTotal(this.hands[seat] || []);
   };
 
@@ -409,6 +540,7 @@
       me: seat,
       humanWeisIds: this.humanWeisIds(seat),
       weisHold: !!this.hold,
+      abortReason: this.abortReason,
       lastEvent: this.lastEvent,
       lastScore: this.lastScore,
       history: this.history,

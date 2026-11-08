@@ -127,15 +127,18 @@
     if (this.turnSeat() !== seat || this.weisDecided[seat]) return false;
     this.weisDecided[seat] = true;
     var best = R.bestWeis(this.hands[seat]);
-    if (best) this.weisAnn.push({ seat: seat, best: best, order: ++this.annCounter });
-    this.lastEvent = best ? { type: 'weis', seat: seat, label: best.label, pts: best.pts } : this.lastEvent;
+    if (best) this.weisAnn.push({ seat: seat, best: best, total: R.weisTotal(this.hands[seat]), order: ++this.annCounter });
+    var total = best ? R.weisTotal(this.hands[seat]) : null;
+    this.lastEvent = total ? { type: 'weis', seat: seat, label: total.label, pts: total.pts } : this.lastEvent;
     return !!best;
   };
 
   // Ids der Karten des eigenen angesagten Weis (zum Hervorheben), sonst [].
   Game.prototype.humanWeisIds = function () {
-    var a = this.weisAnn.filter(function (x) { return x.seat === this.humanSeat; }.bind(this))[0];
-    return a ? a.best.cards.map(function (c) { return c.id; }) : [];
+    // Nur markieren, solange man am Zug ist und den Weis noch nicht bestätigt hat.
+    if (this.phase !== 'play' || this.trickNo !== 0 || this.turnSeat() !== this.humanSeat || this.weisDecided[this.humanSeat]) return [];
+    var t = R.weisTotal(this.hands[this.humanSeat] || []);
+    return t ? t.cards.map(function (c) { return c.id; }) : [];
   };
 
   Game.prototype.humanAnnounce = function () {
@@ -146,7 +149,7 @@
 
   // Die beste Weisen-Kombination des Menschen (für die Schaltfläche), oder null.
   Game.prototype.humanBestWeis = function () {
-    return R.bestWeis(this.hands[this.humanSeat] || []);
+    return R.weisTotal(this.hands[this.humanSeat] || []);
   };
 
   Game.prototype.aiTrump = function () {
@@ -305,8 +308,8 @@
       totals: this.totals,
       target: this.cfg.target,
       cfg: this.cfg,
-      weisAnn: this.weisAnn.map(function (a) { return { seat: a.seat, label: a.best.label, pts: a.best.pts, order: a.order }; }),
-      weisRes: this.weisRes ? { seat: this.weisRes.seat, label: this.weisRes.label, pts: this.weisRes.pts } : null,
+      weisAnn: this.weisAnn.map(function (a) { return { seat: a.seat, label: a.total.label, pts: a.total.pts, order: a.order }; }),
+      weisRes: this.weisRes ? { seat: this.weisRes.seat, label: this.weisRes.label, pts: this.weisRes.pts, cards: this.weisRes.cards } : null,
       humanBest: this.phase === 'play' && this.trickNo === 0 && !this.weisDecided[this.humanSeat] ? this.humanBestWeis() : null,
       humanWeisDone: this.weisDecided[this.humanSeat],
       humanWeisIds: this.humanWeisIds(),

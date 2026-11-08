@@ -155,14 +155,21 @@
     } else {
       $('picker').innerHTML = '';
     }
+    // Weisen-Feld nur kurz in der ersten Runde (Stich 1 und 2), und nur wenn es einen Weis gibt.
     var weis = '';
-    if (st.phase === 'play' && st.cfg.weis && st.trickNo <= 1) {
+    if (st.phase === 'play' && st.cfg.weis && st.weisAnn.length && st.trickNo === 0) {
       var rows = st.weisAnn.map(function (a) {
-        var won = st.weisRes && st.weisRes.seat === a.seat;
-        var cls = st.trickNo === 0 ? '' : (won ? 'won' : 'lost');
-        return '<span class="' + cls + '">' + esc(nameOf(a.seat)) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
+        return '<span>' + esc(nameOf(a.seat)) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
       });
-      weis = '<div class="weis"><b>Weisen (Minus)</b>' + (rows.length ? rows.join('') : '<span class="lost">Keine</span>') + '</div>';
+      weis = '<div class="weis"><b>Weis angesagt</b>' + rows.join('') + '</div>';
+    } else if (st.phase === 'play' && st.cfg.weis && st.weisRes && st.trickNo === 1) {
+      // Der Gewinner-Weis mit seinen Karten: für alle sichtbar, wenn man nicht gewinnt.
+      var cards = (st.weisRes.cards || []).map(function (c) {
+        return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="' + esc(c.r + ' ' + SUIT_LABEL[c.s]) + '">';
+      }).join('');
+      weis = '<div class="weis"><b>Weis von ' + esc(nameOf(st.weisRes.seat)) + ' (Minus)</b>' +
+        '<span>' + esc(st.weisRes.label) + ': ' + st.weisRes.pts + '</span>' +
+        '<div class="weis-cards">' + cards + '</div></div>';
     }
     $('weis').innerHTML = weis;
     var bw = $('btn-weis');
@@ -237,16 +244,23 @@
     return '<svg class="group single" viewBox="0 0 12 30" aria-hidden="true"><line x1="6" y1="3" x2="6" y2="27"/></svg>';
   }
 
+  // Jasstafel: oben die Pluspunkte (Tischweis), unter dem weissen Strich die Minuspunkte
+  // (Weis aus der Hand und Stöck) der laufenden Runde. Darunter die Striche.
   function renderChalk(st) {
     var html = '';
     for (var s = 0; s < st.n; s++) {
       var t = st.totals[s];
+      var plus = st.roundTisch ? st.roundTisch[s] : 0;
+      var minus = (st.weisRes && st.weisRes.seat === s ? st.weisRes.pts : 0) + (st.roundStoeck ? st.roundStoeck[s] : 0);
       var marks = '';
       if (t > 0) {
         for (var g = 0; g < Math.floor(t / 5); g++) marks += strokeGroup();
         for (var k = 0; k < t % 5; k++) marks += strokeSingle();
       }
       html += '<div class="chalk-col"><div class="chalk-name">' + esc(nameOf(s)) + '</div>' +
+        '<div class="scribe"><span class="plus">' + (plus ? '+' + plus : '&nbsp;') + '</span>' +
+        '<span class="sline"></span>' +
+        '<span class="minus">' + (minus ? '-' + minus : '&nbsp;') + '</span></div>' +
         '<div class="chalk-marks">' + marks + '</div>' +
         '<div class="chalk-num">' + t + '</div></div>';
     }

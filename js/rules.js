@@ -253,14 +253,34 @@
     return best;
   }
 
-  // anns: [{seat, best, order}] in Ansagereihenfolge. Gleich stark: wer zuerst ansagt, gewinnt.
+  // Alle Weisen eines Spielers zusammen: Summe der Punkte (keine Karte doppelt).
+  // Gewinner wird nur nach dem besten Weis bestimmt, die Punkte zählen aber alle.
+  // Rückgabe null, wenn kein Weis.
+  function weisTotal(hand) {
+    var m = bestMelds(hand);
+    if (!m.melds.length || m.pts <= 0) return null;
+    var melds = m.melds.map(function (x) {
+      return { label: x.type === 'four' ? 'Vierling' : (x.n + '-Blatt'), pts: x.pts, cards: x.cards };
+    });
+    var cards = [];
+    melds.forEach(function (x) { cards = cards.concat(x.cards); });
+    return {
+      pts: m.pts,
+      melds: melds,
+      cards: cards,
+      label: melds.map(function (x) { return x.label; }).join(' + ')
+    };
+  }
+
+  // anns: [{seat, best, total, order}] in Ansagereihenfolge. Gleich stark: wer zuerst ansagt, gewinnt.
+  // Die Punkte des Gewinners sind die Summe aller seiner Weisen (total.pts).
   function resolveWeisAnn(anns) {
     var win = null;
     anns.forEach(function (a) {
       if (!win || weisGreater(a.best, win.best)) win = a;
       else if (!weisGreater(win.best, a.best) && a.order < win.order) win = a;
     });
-    return win ? { seat: win.seat, best: win.best, pts: win.best.pts, label: win.best.label } : null;
+    return win ? { seat: win.seat, best: win.best, pts: win.total.pts, label: win.total.label, cards: win.total.cards, melds: win.total.melds } : null;
   }
 
   // Tischweis: Weispunkte, die die vier Karten eines Stichs bilden (Molotow).
@@ -281,6 +301,7 @@
     bestWeis: bestWeis,
     weisGreater: weisGreater,
     resolveWeisAnn: resolveWeisAnn,
+    weisTotal: weisTotal,
     tischWeis: tischWeis,
     legalFree: legalFree,
     PTS_OBENABE: PTS_OBENABE,

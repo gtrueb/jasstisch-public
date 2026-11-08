@@ -180,13 +180,18 @@
 
     // Weisen-Anzeige: alle Ansagen. Nach dem ersten Stich gilt nur der Gewinner.
     var weis = '';
-    if (settings.weis && st.phase === 'play' && st.trickNo <= 1) {
+    if (settings.weis && st.phase === 'play' && st.weisAnn.length && st.trickNo === 0) {
       var rows = st.weisAnn.map(function (a) {
-        var won = st.weisRes && st.weisRes.seat === a.seat;
-        var cls = st.trickNo === 0 ? '' : (won ? 'won' : 'lost');
-        return '<span class="' + cls + '">' + esc(SEAT_NAMES[a.seat]) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
+        return '<span>' + esc(SEAT_NAMES[a.seat]) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
       });
-      weis = '<div class="weis"><b>Weisen</b>' + (rows.length ? rows.join('') : '<span class="lost">Keine</span>') + '</div>';
+      weis = '<div class="weis"><b>Weis angesagt</b>' + rows.join('') + '</div>';
+    } else if (settings.weis && st.phase === 'play' && st.weisRes && st.trickNo === 1) {
+      var wcards = (st.weisRes.cards || []).map(function (c) {
+        return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
+      }).join('');
+      weis = '<div class="weis"><b>Weis von ' + esc(SEAT_NAMES[st.weisRes.seat]) + '</b>' +
+        '<span>' + esc(st.weisRes.label) + ': ' + st.weisRes.pts + '</span>' +
+        '<div class="weis-cards">' + wcards + '</div></div>';
     }
 
     $('felt-msg').textContent = msg;

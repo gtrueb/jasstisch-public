@@ -13,10 +13,10 @@
   var RANK_LONG = { U: 'Under', O: 'Ober', K: 'König', A: 'Ass' };
 
   var ICON = {
-    R: '<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="currentColor"><circle cx="12" cy="6.5" r="4"/><circle cx="17.4" cy="10.4" r="4"/><circle cx="15.3" cy="16.8" r="4"/><circle cx="8.7" cy="16.8" r="4"/><circle cx="6.6" cy="10.4" r="4"/></g><circle cx="12" cy="12" r="2.4" fill="#fffdf7"/></svg>',
-    S: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5c-3.3 0-5.6 2.5-5.6 6.1v4.1L4.2 16.6h15.6l-2.2-3.9V8.6c0-3.6-2.3-6.1-5.6-6.1z"/><circle cx="12" cy="19.4" r="2.2" fill="currentColor"/></svg>',
-    L: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.5l7.6 2.8v5.9c0 4.9-3.2 8.9-7.6 10.3-4.4-1.4-7.6-5.4-7.6-10.3V5.3z"/><path d="M12 7.5v9M8.5 11h7" stroke="#fffdf7" stroke-width="1.5" fill="none"/></svg>',
-    E: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="14.6" rx="5.1" ry="6.2" fill="currentColor"/><path d="M6.7 10.6c0-3 2.4-4.7 5.3-4.7s5.3 1.7 5.3 4.7z" fill="currentColor" opacity=".75"/><path d="M12 3.4v3" stroke="currentColor" stroke-width="1.6"/></svg>'
+    R: '<img class="suit-img" src="assets/suits/R.svg" alt="">',
+    S: '<img class="suit-img" src="assets/suits/S.svg" alt="">',
+    L: '<img class="suit-img" src="assets/suits/L.svg" alt="">',
+    E: '<img class="suit-img" src="assets/suits/E.svg" alt="">'
   };
 
   var $ = function (id) { return document.getElementById(id); };

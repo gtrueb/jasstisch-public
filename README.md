@@ -33,6 +33,7 @@ node --test tests/*.test.js
 - `js/molotov.js`: Ablauf Molotov (Obenabe, Tischweis, Striche)
 - `js/ui.js`, `js/molotov-ui.js`: Oberfläche
 - `assets/style.css`: Aussehen
+- `assets/suits/`: Farbsymbole von Wikimedia Commons, Quellen und Lizenzen in `assets/suits/CREDITS.md`
 
 ## Zeiten
 

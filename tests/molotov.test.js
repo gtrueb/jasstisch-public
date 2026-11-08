@@ -103,6 +103,6 @@ test('round tallies match rounded raw points, and card points total 152', () => 
   g.startRound();
   assert.equal(g.phase, 'gameEnd');
   const sc = g.lastScore;
-  sc.raw.forEach((p, i) => assert.equal(g.history[0].tallies[i], M.tallies(p)));
+  sc.plusStrokes.forEach((ps, i) => assert.equal(g.history[0].tallies[i], ps - sc.minusStrokes[i]));
   assert.equal(sc.card.reduce((a, b) => a + b, 0), 152);
 });

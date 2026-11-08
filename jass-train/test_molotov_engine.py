@@ -62,11 +62,11 @@ def test_card_points_total_152():
         assert sum(info['card']) == 152, ('Kartenpunkte', sum(info['card']))
 
 
-def test_round_tallies_match_raw():
+def test_round_tallies_match_plus_minus():
     for seed in range(200):
         tall, info = play_round(seed)
         for s in range(4):
-            assert tall[s] == E._tallies(info['raw'][s])
+            assert tall[s] == E._tallies(info['plus'][s]) - E._tallies(info['minus'][s])
 
 
 if __name__ == '__main__':
@@ -74,5 +74,5 @@ if __name__ == '__main__':
     test_tisch()
     test_rules_each_move_many_rounds()
     test_card_points_total_152()
-    test_round_tallies_match_raw()
+    test_round_tallies_match_plus_minus()
     print('alle Molotow-Prüfungen bestanden (400 Runden Farbzwang, 152 Kartenpunkte, Striche)')

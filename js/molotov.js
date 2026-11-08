@@ -51,12 +51,16 @@
     };
     this.n = this.cfg.players;
     this.delays = Object.assign({}, DEFAULT_DELAYS, cfg.delays || {});
-    this.sched = cfg.sched || function (fn, ms) { return setTimeout(fn, ms); };
+    this.sched = cfg.sched || function (fn, ms) {
+      return (typeof window !== 'undefined' && window.JassClock) ? window.JassClock.sched(fn, ms) : setTimeout(fn, ms);
+    };
     this.rnd = cfg.rnd || Math.random;
     this.onUpdate = cfg.onUpdate || function () {};
     this.ai = AIM.createPlayer({ level: cfg.aiLevel || 'normal' });
     this.humanSeat = 0;
-    this.totals = zeros(this.n);       // Striche je Spieler
+    this.totals = zeros(this.n);       // Striche je Spieler (Plus minus Minus)
+    this.plusStr = zeros(this.n);      // Plus-Striche je Spieler (Kartenpunkte, Tischweis, letzter Stich)
+    this.minusStr = zeros(this.n);     // Minus-Striche je Spieler (Weis aus der Hand, Stöck)
     this.history = [];
     this.roundNo = 0;
     this.dealer = Math.floor(this.rnd() * this.n);
@@ -262,17 +266,24 @@
     if (this.cfg.lastTrick) bonus[this.lastWinner] += LAST_TRICK;
     if (this.weisRes) weis[this.weisRes.seat] = this.weisRes.pts;
 
-    var raw = zeros(n), t = zeros(n), s;
+    // Plus und Minus werden getrennt auf Striche gerundet (wie auf der Jasstafel).
+    var raw = zeros(n), t = zeros(n), ps = zeros(n), ms = zeros(n), s;
     for (s = 0; s < n; s++) {
-      raw[s] = card[s] + bonus[s] + this.tisch[s] - weis[s] - this.stoeck[s];
-      t[s] = tallies(raw[s]);
+      var plusPts = card[s] + bonus[s] + this.tisch[s];
+      var minusPts = weis[s] + this.stoeck[s];
+      ps[s] = tallies(plusPts);
+      ms[s] = tallies(minusPts);
+      this.plusStr[s] += ps[s];
+      this.minusStr[s] += ms[s];
+      raw[s] = plusPts - minusPts;
+      t[s] = ps[s] - ms[s];
       this.totals[s] += t[s];
     }
     this.lastScore = {
       round: this.roundNo, trump: trump, n: n,
       card: card, bonus: bonus, tisch: this.tisch.slice(), weis: weis.map(function (x) { return -x; }),
       stoeck: this.stoeck.map(function (x) { return -x; }),
-      raw: raw, tallies: t
+      raw: raw, tallies: t, plusStrokes: ps, minusStrokes: ms
     };
     this.history.push({ round: this.roundNo, trump: trump, tallies: t.slice(), totals: this.totals.slice() });
 
@@ -311,6 +322,8 @@
       leader: this.leader,
       dealer: this.dealer,
       totals: this.totals,
+      plusStr: this.plusStr.slice(),
+      minusStr: this.minusStr.slice(),
       cfg: this.cfg,
       weisAnn: this.weisAnn.map(function (a) { return { seat: a.seat, label: a.total.label, pts: a.total.pts, order: a.order }; }),
       weisRes: this.weisRes ? { seat: this.weisRes.seat, label: this.weisRes.label, pts: this.weisRes.pts, cards: this.weisRes.cards } : null,

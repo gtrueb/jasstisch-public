@@ -100,7 +100,7 @@
     var hand = st.hands[0] || [];
     var legal = st.legal || [];
     var canPlay = st.phase === 'play' && st.turnSeat === 0;
-    var dealing = st.phase === 'deal';
+    var dealing = st.phase === 'deal' || st.phase === 'dealing';
     var weisIds = st.humanWeisIds || [];
     sortHand(hand).forEach(function (card, idx) {
       var ok = canPlay && legal.indexOf(card.id) >= 0;
@@ -164,8 +164,10 @@
     var picker = '';
     var ev = st.lastEvent;
 
-    if (st.phase === 'deal') {
+    if (st.phase === 'deal' || st.phase === 'dealing') {
       msg = 'Karten werden gemischt …';
+    } else if (st.phase === 'aborted') {
+      msg = 'Runde abgebrochen' + (st.abortReason ? ': ' + st.abortReason : '') + '. Neue Runde gleich …';
     } else if (st.phase === 'trump') {
       var s7 = st.schellen7Holder >= 0 && !(ev && ev.type === 'schieben');
       if (st.chooser === 0) {
@@ -327,7 +329,14 @@
     if (!st) return;
     curNames = st.names || SEAT_NAMES;
     curTeams = st.teamNames || null;
+    // Online: die Regeln kommen vom Host (st.cfg), nicht von der eigenen Einstellung dieses Geräts.
     var settings = lastSettings;
+    if (g.role === 'client' && st.cfg) {
+      settings = Object.assign({}, lastSettings, {
+        weis: st.cfg.weis, stoeck: st.cfg.stoeck, matchBonus: st.cfg.matchBonus,
+        schilten2: st.cfg.schilten2, schellen7: st.cfg.schellen7, target: st.cfg.target
+      });
+    }
     renderSeats(st);
     renderHand(st);
     renderTrick(st);

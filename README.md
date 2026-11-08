@@ -35,6 +35,32 @@ node --test tests/*.test.js
 - `assets/style.css`: Aussehen
 - `assets/suits/`: Farbsymbole von Wikimedia Commons, Quellen und Lizenzen in `assets/suits/CREDITS.md`
 
+## Online mit verdeckten Karten
+
+Ein Spieler erstellt eine Lobby und bekommt einen Code. Die anderen geben den Code ein.
+Freie Plätze füllt die KI.
+
+Der Host sieht die Hände der Mitspieler nicht. Die Karten sind verschlüsselt:
+
+- `js/mental.js`: Schlüssel und Verschlüsselung. Gruppe der 2048-Bit-Primzahl aus RFC 3526 (Gruppe 14). Jeder Spieler hat einen geheimen Schlüssel. Ein Beweis (Chaum-Pedersen) zeigt, dass eine offen gelegte Karte stimmt.
+- `js/mental-round.js`: Ablauf einer Runde. Host-Seite (`Round`) und Gerät des Mitspielers (`ClientSeat`).
+- `js/online.js`: Verbindung, Lobby, Zeitlimit. Jeder Mitspieler spielt auf seinem eigenen Gerät. Die Karten bleiben dort.
+
+Was der Host sieht und was nicht:
+
+- Nicht sichtbar: die Hände der Mitspieler, bis sie gespielt oder angesagt werden.
+- Sichtbar: die gespielten und angesagten Karten, die Hände der KI-Plätze und die eigene Hand.
+
+Grenzen des Vertrauens (ehrlich beschrieben):
+
+- Ein Host, der den Originalcode nutzt, sieht die Hände der Mitspieler nicht. Jedes Gerät gibt nur die Karten frei, die es selbst spielt oder ansagt.
+- Ein Host, der den Code verändert, kann die Mischschritte manipulieren und so Karten erfahren. Dagegen fehlen überprüfbare Mischschritte (eigene Aufgabe, noch nicht gebaut).
+- Der Host kann den Ablauf stören, zum Beispiel Nachrichten verzögern oder die Runde abbrechen.
+- Ob ein Mitspieler die Farbe bedient, prüft nur sein eigenes Gerät. Der Host kennt die Hand nicht.
+- Fällt ein Mitspieler aus, wird die Runde abgebrochen und ohne ihn neu gestartet.
+
+Tests: `node --test tests/*.test.js`. Die Datei `tests/remote-game.test.js` spielt eine verdeckte und eine offene Partie gleichzeitig und vergleicht sie nach jedem Zug.
+
 ## Zeiten
 
 Die Zeiten stehen in `js/game.js` (`DEFAULT_DELAYS`). Sie wurden an jassli.ch angepasst:

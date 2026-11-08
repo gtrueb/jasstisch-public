@@ -50,6 +50,34 @@
 
   function teamName(t) { return t === 0 ? 'Du & Anna' : 'Max & Leo'; }
 
+  // Gewinner-Weis nach dem ersten Stich: beim Spieler mit Weis, höchstens 5 s oder bis "Weiter".
+  var weisView = null, weisTimer = null, shownRound = -1;
+
+  function closeWeisView() {
+    weisView = null;
+    clearTimeout(weisTimer);
+    weisTimer = null;
+  }
+
+  function maybeShowWeisView(st) {
+    if (st.phase !== 'play' || st.trickNo !== 1 || !st.weisRes) return;
+    var key = st.history.length;          // bleibt während einer Runde gleich
+    if (shownRound === key) return;       // nur einmal pro Runde
+    shownRound = key;
+    weisView = { key: key, seat: st.weisRes.seat, label: st.weisRes.label, pts: st.weisRes.pts, cards: st.weisRes.cards || [] };
+    clearTimeout(weisTimer);
+    weisTimer = setTimeout(function () { closeWeisView(); if (game) render(game); }, 5000);
+  }
+
+  function weisBlockHtml(v) {
+    var cards = v.cards.map(function (c) {
+      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
+    }).join('');
+    return '<div class="seat-weis"><div class="sw-title">Weis: ' + esc(v.label) + ' (' + v.pts + ')</div>' +
+      '<div class="weis-cards">' + cards + '</div>' +
+      '<button type="button" class="btn small" id="weis-weiter">Weiter</button></div>';
+  }
+
   function renderSeats(st) {
     [0, 1, 2, 3].forEach(function (seat) {
       var box = $('seat-' + seat);
@@ -67,7 +95,12 @@
         hand += '</div>';
       }
       box.innerHTML = chip + hand;
+      if (weisView && weisView.key === st.history.length && weisView.seat === seat) {
+        box.innerHTML += weisBlockHtml(weisView);
+      }
     });
+    var wb = document.getElementById('weis-weiter');
+    if (wb) wb.addEventListener('click', function () { closeWeisView(); if (game) render(game); });
   }
 
   // Sortierung: erst nach Farbe (Rosen, Schellen, Schilten, Eichel), dann nach Rang von klein nach gross.
@@ -185,13 +218,6 @@
         return '<span>' + esc(SEAT_NAMES[a.seat]) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
       });
       weis = '<div class="weis"><b>Weis angesagt</b>' + rows.join('') + '</div>';
-    } else if (settings.weis && st.phase === 'play' && st.weisRes && st.trickNo === 1) {
-      var wcards = (st.weisRes.cards || []).map(function (c) {
-        return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
-      }).join('');
-      weis = '<div class="weis"><b>Weis von ' + esc(SEAT_NAMES[st.weisRes.seat]) + '</b>' +
-        '<span>' + esc(st.weisRes.label) + ': ' + st.weisRes.pts + '</span>' +
-        '<div class="weis-cards">' + wcards + '</div></div>';
     }
 
     $('felt-msg').textContent = msg;
@@ -302,6 +328,7 @@
     if (!g || g !== game) return; // alte Spiele (z. B. nach "Menü") nicht mehr zeichnen
     var st = g.stateForUI();
     var settings = lastSettings;
+    maybeShowWeisView(st);
     renderSeats(st);
     renderHand(st);
     renderTrick(st);
@@ -325,6 +352,8 @@
 
   function startGame(settings) {
     lastSettings = settings;
+    closeWeisView();
+    shownRound = -1;
     $('setup').hidden = true;
     $('table').hidden = false;
     $('modal').hidden = true;

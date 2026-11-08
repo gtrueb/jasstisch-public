@@ -387,3 +387,8 @@ button.card:disabled { cursor: default; }
 .table-score.four .row span { min-width: 0; }
 .table-score.four .row.head span { font-size: 0.8rem; }
 .weis span { display: block; }
+
+/* Hofkarten mit eigenen Bildern */
+.card .center.court { inset: 16px 12px; display: block; }
+.card .center.court img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.card.back .back-img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 9px; }

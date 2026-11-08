@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" width="100" height="150">
+  <rect x="1" y="1" width="98" height="148" rx="8" fill="#fffdf7" stroke="#b9b1a0" stroke-width="1.5"/>
+  <rect x="7" y="7" width="86" height="136" rx="5" fill="none" stroke="#d9a12b" stroke-width="1"/>
+  <text x="50" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="11" fill="#d9a12b">KÖNIG</text>
+  <g transform="translate(50 92) scale(0.9)"><path d="M-16 -58 L-16 -72 L-8 -64 L0 -76 L8 -64 L16 -72 L16 -58 Z" fill="#d9a12b"/><circle cx="0" cy="-48" r="15" fill="#f1d3ad"/><path d="M-15 -52 Q0 -40 15 -52 L15 -40 L-15 -40 Z" fill="#8b5a2b" opacity=".7"/><path d="M-26 -30 Q0 -40 26 -30 L30 35 L-30 35 Z" fill="#d9a12b"/><rect x="-29" y="2" width="58" height="6" fill="#f5c542"/><path d="M-26 -28 L-38 12 L-32 14 L-20 -18 Z" fill="#d9a12b"/><path d="M26 -28 L38 12 L32 14 L20 -18 Z" fill="#d9a12b"/><rect x="-16" y="35" width="13" height="30" fill="#2b2b2b"/><rect x="3" y="35" width="13" height="30" fill="#2b2b2b"/><path d="M0 12 l5 3 v6 q0 6 -5 8 q-5 -2 -5 -8 v-6 z" fill="#fffdf7" opacity=".9"/></g>
+</svg>

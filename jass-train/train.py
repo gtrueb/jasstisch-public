@@ -76,11 +76,11 @@ def mask_of(req):
     return m
 
 
-def reward_for(gtype, seat, result, style):
+def reward_for(gtype, seat, result, style, n=4):
     """Belohnung für einen Sitz (größer = besser)."""
     if gtype == 'molotov':
         mine = result[seat]
-        others = sum(result[s] for s in range(4) if s != seat) / 3.0
+        others = sum(result[s] for s in range(n) if s != seat) / (n - 1)
         r = -mine
         if style == 1:
             r += 0.5 * others
@@ -95,8 +95,9 @@ def reward_for(gtype, seat, result, style):
 class Runner:
     """Spielt viele Runden gleichzeitig. Jeder Schritt = ein Batch durch das Netz."""
 
-    def __init__(self, model, gtype, device, rng, greedy_eval=False):
+    def __init__(self, model, gtype, device, rng, greedy_eval=False, n=4):
         self.model = model
+        self.n = n
         self.gtype = gtype
         self.device = device
         self.rng = rng
@@ -105,9 +106,9 @@ class Runner:
     def play(self, n_rounds, styles_fixed=None, record=False):
         gens, styles_all = [], []
         for _ in range(n_rounds):
-            styles = styles_fixed or [self.rng.randrange(3) for _ in range(4)]
+            styles = styles_fixed or [self.rng.randrange(3) for _ in range(self.n)]
             styles_all.append(styles)
-            gens.append(E.round_gen(self.gtype, styles, self.rng, self.rng.randrange(4), None))
+            gens.append(E.round_gen(self.gtype, styles, self.rng, self.rng.randrange(self.n), None, n=self.n))
         pend = [next(g) for g in gens]
         results = [None] * n_rounds
         records = []  # (x, mask, action, game, seat, style, kind)
@@ -161,11 +162,15 @@ class Runner:
         return results, styles_all, records
 
 
+def ckpt_name(game, players):
+    return game + ('.pt' if players == 4 else f'-{players}p.pt')
+
+
 def train(args):
     device = torch.device(args.device if args.device != 'auto' else ('mps' if torch.backends.mps.is_available() else 'cpu'))
     rng = random.Random(args.seed)
     os.makedirs(args.out, exist_ok=True)
-    path = os.path.join(args.out, args.game + '.pt')
+    path = os.path.join(args.out, ckpt_name(args.game, args.players))
     model = Net().to(device)
     opt = torch.optim.Adam(model.parameters(), lr=args.lr)
     baseline = {}
@@ -177,7 +182,7 @@ def train(args):
         baseline = ck.get('baseline', {})
         done = ck.get('rounds', 0)
         print('resumed', path, 'rounds so far', done)
-    runner = Runner(model, args.game, device, rng)
+    runner = Runner(model, args.game, device, rng, n=args.players)
     t0 = time.time()
     step = 0
     while done < args.rounds:
@@ -187,14 +192,14 @@ def train(args):
         # Belohnungen je Entscheidung
         X, M, A, R, S, K, G = [], [], [], [], [], [], []
         for (x, m, a, i, seat, style, kind) in records:
-            rew = reward_for(args.game, seat, results[i], style)
-            key = (args.game, style)
+            rew = reward_for(args.game, seat, results[i], style, args.players)
+            key = (args.game, args.players, style)
             b = baseline.get(key, 0.0)
             X.append(x); M.append(m); A.append(a); R.append(rew - b); S.append(style); K.append(kind)
         # Baseline (gleitender Mittelwert je Stil)
         for (x, m, a, i, seat, style, kind) in records:
-            key = (args.game, style)
-            rew = reward_for(args.game, seat, results[i], style)
+            key = (args.game, args.players, style)
+            rew = reward_for(args.game, seat, results[i], style, args.players)
             baseline[key] = 0.99 * baseline.get(key, 0.0) + 0.01 * rew
         if not X:
             continue
@@ -224,20 +229,20 @@ def train(args):
     return model
 
 
-def evaluate(model, game, device, n=2000, seed=123):
+def evaluate(model, game, device, n=2000, seed=123, players=4):
     """Vergleich: trainiertes Netz gegen Zufall, je Stil (Zahlen = Striche bzw. Teampunkte, kleiner ist besser bei Molotow)."""
     rng = random.Random(seed)
     model.eval()
     out = {}
-    base = Runner(None, game, device, rng)
-    res_b, _, _ = base.play(n, styles_fixed=[0, 0, 0, 0])
+    base = Runner(None, game, device, rng, n=players)
+    res_b, _, _ = base.play(n, styles_fixed=[0] * players)
     if game == 'molotov':
         out['zufall (Striche je Spieler)'] = sum(r[0] for r in res_b) / n
     else:
         out['zufall (Teampunkte)'] = sum(r[0] for r in res_b) / n
     for st in range(3):
-        r = Runner(model, game, device, rng, greedy_eval=True)
-        res, _, _ = r.play(n, styles_fixed=[st, st, st, st])
+        r = Runner(model, game, device, rng, greedy_eval=True, n=players)
+        res, _, _ = r.play(n, styles_fixed=[st] * players)
         if game == 'molotov':
             out[f'netz {STYLES[st]} (Striche je Spieler)'] = sum(x[0] for x in res) / n
         else:
@@ -249,6 +254,7 @@ def evaluate(model, game, device, n=2000, seed=123):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--game', choices=['molotov', 'schieber'], default='molotov')
+    p.add_argument('--players', type=int, choices=[3, 4], default=4, help='Spielerzahl (nur Molotow kann 3 Spieler)')
     p.add_argument('--rounds', type=int, default=200000, help='Gesamtzahl der Trainingsrunden')
     p.add_argument('--batch', type=int, default=512, help='Runden pro Gradientenschritt')
     p.add_argument('--lr', type=float, default=3e-4)
@@ -264,13 +270,13 @@ def main():
     device = torch.device(args.device if args.device != 'auto' else ('mps' if torch.backends.mps.is_available() else 'cpu'))
     if args.eval_only:
         model = Net().to(device)
-        ck = torch.load(os.path.join(args.out, args.game + '.pt'), map_location=device)
+        ck = torch.load(os.path.join(args.out, ckpt_name(args.game, args.players)), map_location=device)
         model.load_state_dict(ck['model'])
-        for k, v in evaluate(model, args.game, device).items():
+        for k, v in evaluate(model, args.game, device, players=args.players).items():
             print(f'{k:40s} {v:8.2f}')
         return
     model = train(args)
-    for k, v in evaluate(model, args.game, device).items():
+    for k, v in evaluate(model, args.game, device, players=args.players).items():
         print(f'{k:40s} {v:8.2f}')
 
 

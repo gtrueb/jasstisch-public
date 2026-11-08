@@ -40,6 +40,18 @@
     </div>
 
     <section class="panel">
+      <h2>Spieler</h2>
+      <div class="field">
+        <span class="label">Anzahl</span>
+        <div class="seg">
+          <label><input type="radio" name="players" value="4" checked><span>4 Spieler</span></label>
+          <label><input type="radio" name="players" value="3"><span>3 Spieler</span></label>
+        </div>
+      </div>
+      <p class="small muted">Bei 4 Spielern hat jeder 9 Karten. Bei 3 Spielern hat jeder 12 Karten, also alle 36 Karten.</p>
+    </section>
+
+    <section class="panel">
       <h2>Spielende</h2>
       <div class="field">
         <span class="label">Ende</span>
@@ -64,6 +76,7 @@
     <p class="muted small">Gratis. Ohne Registrierung. Läuft im Browser.</p>
   </main>
 
+  <div id="toasts" class="toasts" aria-live="polite"></div>
   <!-- Tisch -->
   <main id="table" class="table-view" hidden>
     <div class="table-layout">
@@ -119,6 +132,7 @@
   <script src="js/rules.js"></script>
   <script src="js/ai-molotov.js"></script>
   <script src="js/molotov.js"></script>
+  <script src="js/fx.js"></script>
   <script src="js/molotov-ui.js"></script>
 </body>
 </html>

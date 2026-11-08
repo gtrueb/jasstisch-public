@@ -300,6 +300,7 @@
       hands: this.hands,
       trickWins: this.trickWins,
       vorhand: this.vorhand,
+      leader: this.leader,
       dealer: this.dealer,
       totals: this.totals,
       target: this.cfg.target,

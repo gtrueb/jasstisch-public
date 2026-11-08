@@ -19,6 +19,7 @@
     E: '<img class="suit-img" src="assets/suits/E.svg" alt="">'
   };
 
+  var COURT = { U: true, O: true, K: true }; // Hofkarten: eigene Bilder aus assets/cards/
   var $ = function (id) { return document.getElementById(id); };
   var game = null;
   var lastSettings = null;
@@ -30,6 +31,7 @@
     if (opts.back) {
       var b = document.createElement('div');
       b.className = 'card back' + (opts.small ? ' small' : '');
+      b.innerHTML = '<img class="back-img" src="assets/cards/back.svg" alt="">';
       return b;
     }
     var el = document.createElement(opts.static ? 'div' : 'button');
@@ -41,7 +43,7 @@
     el.setAttribute('aria-label', label);
     el.innerHTML =
       '<span class="corner tl"><b>' + esc(card.r) + '</b><i>' + ICON[card.s] + '</i></span>' +
-      '<span class="center"><b>' + esc(card.r) + '</b>' + ICON[card.s] + '</span>' +
+      (COURT[card.r] ? '<span class="center court"><img src="assets/cards/' + card.s + card.r + '.svg" alt=""></span>' : '<span class="center"><b>' + esc(card.r) + '</b>' + ICON[card.s] + '</span>') +
       '<span class="corner br"><b>' + esc(card.r) + '</b><i>' + ICON[card.s] + '</i></span>';
     if (opts.disabled) el.disabled = true;
     return el;

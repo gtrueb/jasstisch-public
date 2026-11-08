@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const R = require('../js/rules.js');
 const AIS = require('../js/ai-schieber.js');
-const AI = AIS.createPlayer();
+const AI = AIS.createPlayer({ level: "schwer" });
 const { Game } = require('../js/game.js');
 
 const c = (s, r) => ({ s, r, id: s + r });
@@ -190,7 +190,7 @@ test('full AI games finish: 9 tricks per round, every card played once', () => {
       schellen7: seed % 2 === 0,
       matchBonus: seed % 3 === 0
     });
-    game.humanSeat = -1; // alle Sitze sind KI
+    game.humanSeats = []; // alle Sitze sind KI
     game.startRound();
     let guard = 0;
     while (game.phase !== 'gameEnd' && guard++ < 500) {

@@ -11,7 +11,12 @@
 })(typeof window !== 'undefined' ? window : this, function (R) {
   'use strict';
 
-  var LEVELS = { normal: {} };
+  var LEVELS = {
+    leicht: { randomP: 0.4 },
+    mittel: { randomP: 0.12 },
+    schwer: { randomP: 0 },
+    normal: { randomP: 0.12 }
+  };
 
   function suitCount(hand, s) {
     return hand.filter(function (c) { return c.s === s; }).length;
@@ -27,8 +32,13 @@
   function createPlayer(opts) {
     opts = opts || {};
     var level = LEVELS[opts.level] ? opts.level : 'normal';
+    var cfg = LEVELS[level];
 
     function choosePlay(hand, plays, trump, seat) {
+      if (cfg.randomP && Math.random() < cfg.randomP) {
+        var all = R.legalFree(hand, plays);
+        return all[Math.floor(Math.random() * all.length)];
+      }
       var legal = R.legalFree(hand, plays);
       if (legal.length === 1) return legal[0];
 

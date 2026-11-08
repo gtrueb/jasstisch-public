@@ -169,24 +169,25 @@ def tisch_pts(cards):
     return total
 
 
-def round_gen(gtype, styles, rng, dealer, scores):
+def round_gen(gtype, styles, rng, dealer, scores, n=4):
     """
     Spielt eine Runde. Gibt Entscheidungen als dict aus und bekommt die Antwort per send().
     Rückgabe (StopIteration.value): Rundenergebnis je Sitz, in Striche (molotov) oder Punkte (schieber).
     """
     deck = list(range(36))
     rng.shuffle(deck)
-    hands = [sorted(deck[s * 9:(s + 1) * 9]) for s in range(4)]
+    per = 36 // n                      # Karten pro Spieler: 9 (4 Spieler) oder 12 (3 Spieler)
+    hands = [sorted(deck[s * per:(s + 1) * per]) for s in range(n)]
     seen = set()
-    won = [[] for _ in range(4)]          # Stichkarten je Sitz
-    trick_wins = [0, 0, 0, 0]
+    won = [[] for _ in range(n)]          # Stichkarten je Sitz
+    trick_wins = [0] * n
     weis_ann = []
-    weis_done = [False] * 4
+    weis_done = [False] * n
     order = [0]
-    stoeck = [0, 0, 0, 0]
-    stoeck_pair = [False] * 4
-    played_ko = [[], [], [], []]
-    tisch = [0, 0, 0, 0]
+    stoeck = [0] * n
+    stoeck_pair = [False] * n
+    played_ko = [[] for _ in range(n)]
+    tisch = [0] * n
     trump = None
     trump_set_by = -1
     schoben = False
@@ -211,20 +212,20 @@ def round_gen(gtype, styles, rng, dealer, scores):
             trump_set_by = chooser
             break
         leader = vorhand
-        for s in range(4):
+        for s in range(n):
             k = any(suit(c) == trump and rank(c) == 7 for c in hands[s])
             o = any(suit(c) == trump and rank(c) == 6 for c in hands[s])
             stoeck_pair[s] = k and o
     else:
-        leader = (dealer + 1) % 4
+        leader = (dealer + 1) % n
 
     plays = []
     trick_no = 0
     for_round_led = None
-    while trick_no < 9:
+    while trick_no < per:
         plays = []
-        for k in range(4):
-            seat = (leader + k) % 4
+        for k in range(n):
+            seat = (leader + k) % n
             # Weisen nur im ersten Stich auf dem eigenen Zug
             if trick_no == 0 and not weis_done[seat]:
                 weis_done[seat] = True
@@ -251,7 +252,7 @@ def round_gen(gtype, styles, rng, dealer, scores):
             if gtype == 'molotov' and trump is None and plays and suit(card) != led:
                 trump = suit(card)
                 trump_set_by = seat
-                for s in range(4):
+                for s in range(n):
                     k = any(suit(c) == trump and rank(c) == 7 for c in hands[s])
                     o = any(suit(c) == trump and rank(c) == 6 for c in hands[s])
                     stoeck_pair[s] = k and o
@@ -297,13 +298,13 @@ def round_gen(gtype, styles, rng, dealer, scores):
         team = [x * doubled for x in team]
         return [team[s % 2] for s in range(4)], {'team': team, 'trump': trump}
     # molotov
-    cards_pts = [sum(card_pts(c, trump) for c in won[s]) for s in range(4)]
-    raw = [cards_pts[s] + tisch[s] - stoeck[s] for s in range(4)]
+    cards_pts = [sum(card_pts(c, trump) for c in won[s]) for s in range(n)]
+    raw = [cards_pts[s] + tisch[s] - stoeck[s] for s in range(n)]
     if weis_res:
         raw[weis_res[0]] -= weis_res[1]
     raw[winner] += 5
     tall = [_tallies(x) for x in raw]
-    return tall, {'raw': raw, 'trump': trump}
+    return tall, {'raw': raw, 'trump': trump, 'card': cards_pts, 'tisch': tisch, 'stoeck': stoeck, 'weis': weis_res}
 
 
 def card_pts_of(c, trump):

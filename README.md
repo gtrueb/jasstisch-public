@@ -27,9 +27,10 @@ node --test tests/*.test.js
 ## Dateien
 
 - `js/rules.js`: Regeln, erlaubte Karten, Weisen, Wertung (Schieber)
-- `js/ai.js`: Computer-Gegner
-- `js/game.js`: Ablauf Schieber (Runden, Timer)
-- `js/molotov.js`: Ablauf Molotov
+- `js/ai-schieber.js`: Computer-Gegner für Schieber (Teams)
+- `js/ai-molotov.js`: Computer-Gegner für Molotov (jeder für sich). Beide haben eine `level`-Option für später.
+- `js/game.js`: Ablauf Schieber (Runden, Weisen, Timer)
+- `js/molotov.js`: Ablauf Molotov (Obenabe, Tischweis, Striche)
 - `js/ui.js`, `js/molotov-ui.js`: Oberfläche
 - `assets/style.css`: Aussehen
 

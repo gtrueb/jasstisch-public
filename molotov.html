@@ -40,17 +40,18 @@
         <span class="label">Ende</span>
         <div class="seg">
           <label><input type="radio" name="end" value="limit" checked><span>Limit 50</span></label>
-          <label><input type="radio" name="end" value="rounds9"><span>9 Runden</span></label>
+          <label><input type="radio" name="end" value="rounds8"><span>8 Runden</span></label>
           <label><input type="radio" name="end" value="rounds12"><span>12 Runden</span></label>
         </div>
       </div>
-      <p class="small muted">Striche = Punkte auf 10 gerundet, dann durch 10 geteilt. Zum Beispiel 72 wird 7, und 35 wird 4.</p>
+      <p class="small muted">Striche = Punkte auf 10 gerundet, dann durch 10 geteilt. Zum Beispiel 72 wird 7, und 35 wird 4. Standard: Limit 50. Wer am wenigsten Striche hat, gewinnt.</p>
     </section>
 
     <section class="panel">
       <h2>Bonus</h2>
-      <label class="switch"><input type="checkbox" id="opt-weis" checked><span></span> <div><b>Weisen</b><small>Zählen für den einzelnen Spieler</small></div></label>
-      <label class="switch"><input type="checkbox" id="opt-stoeck" checked><span></span> <div><b>Stöck</b><small>König und Ober des Trumpfs: +20 für den Spieler</small></div></label>
+      <p class="small muted">Tischweis ist immer aktiv: Ein Weis auf dem Tisch zählt Plus für den Spieler, der den Stich macht.</p>
+      <label class="switch"><input type="checkbox" id="opt-weis" checked><span></span> <div><b>Weisen</b><small>Minus für den besten Weis. Nur die stärkste Kombination aller Spieler zählt</small></div></label>
+      <label class="switch"><input type="checkbox" id="opt-stoeck" checked><span></span> <div><b>Stöck</b><small>König und Ober des Trumpfs: -20 für den Spieler</small></div></label>
       <label class="switch"><input type="checkbox" id="opt-last" checked><span></span> <div><b>Letzter Stich</b><small>+5 für den Spieler mit dem letzten Stich</small></div></label>
     </section>
 
@@ -110,7 +111,7 @@
   </main>
 
   <script src="js/rules.js"></script>
-  <script src="js/ai.js"></script>
+  <script src="js/ai-molotov.js"></script>
   <script src="js/molotov.js"></script>
   <script src="js/molotov-ui.js"></script>
 </body>

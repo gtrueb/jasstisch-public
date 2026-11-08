@@ -2,7 +2,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const R = require('../js/rules.js');
-const AI = require('../js/ai.js');
+const AIS = require('../js/ai-schieber.js');
+const AI = AIS.createPlayer();
 const { Game } = require('../js/game.js');
 
 const c = (s, r) => ({ s, r, id: s + r });
@@ -110,16 +111,49 @@ test('melds: card used only once (four + sequence overlap)', () => {
   assert.equal(best2.pts, 100); // 4x Ober (100) gewinnt gegen Rosen Folge ohne Ober
 });
 
-test('weis: only the stronger team counts', () => {
-  const seatMelds = [
-    [{ type: 'seq', pts: 20, n: 3, top: 8, suit: 'R', cards: [] }],   // Team 0
-    [{ type: 'seq', pts: 50, n: 4, top: 8, suit: 'S', cards: [] }],   // Team 1
-    [{ type: 'seq', pts: 20, n: 3, top: 8, suit: 'R', cards: [] }],   // Team 0
-    [],
-  ];
-  const res = R.resolveWeis(seatMelds, 'R', 0);
-  assert.equal(res.winner, 1);
-  assert.deepEqual(res.pts, [0, 50]);
+test('weis: best Weis ranking: Vierling > 5-Blatt > 4-Blatt > 2x3 > 3-Blatt', () => {
+  const four = (r) => ['R', 'S', 'L', 'E'].map((s) => c(s, r));
+  const cls = (h) => R.bestWeis(h).cls;
+  assert.equal(cls([c('R', 'K'), c('R', 'O'), c('R', 'U'), c('R', '10'), c('R', '9')]), 4); // 5-Blatt
+  assert.equal(R.bestWeis(four('6')), null); // Vier Sechser zählen nicht
+  const v = R.bestWeis(four('A'));
+  assert.equal(v.cls, 5); // Vierling
+  // 4-Blatt + 3-Blatt: nur das 4-Blatt zählt
+  const h43 = [c('R', 'K'), c('R', 'O'), c('R', 'U'), c('R', '10'), c('S', 'A'), c('S', 'K'), c('S', 'O')];
+  assert.equal(R.bestWeis(h43).cls, 3);
+  assert.equal(R.bestWeis(h43).pts, 50);
+  // zwei 3-Blatt
+  const h2x3 = [c('R', 'K'), c('R', 'O'), c('R', 'U'), c('S', '7'), c('S', '8'), c('S', '9')];
+  assert.equal(R.bestWeis(h2x3).cls, 2);
+  assert.equal(R.bestWeis(h2x3).pts, 40);
+  // einzelnes 3-Blatt
+  assert.equal(R.bestWeis([c('R', '7'), c('R', '8'), c('R', '9')]).cls, 1);
+  assert.equal(R.bestWeis([c('R', '7'), c('S', '8')]), null);
+});
+
+test('weis: same class -> higher top card wins (7-8-9 beats 6-7-8)', () => {
+  const a = { seat: 0, order: 1, best: R.bestWeis([c('R', '7'), c('R', '8'), c('R', '9')]) };
+  const b = { seat: 1, order: 2, best: R.bestWeis([c('S', '6'), c('S', '7'), c('S', '8')]) };
+  assert.equal(R.resolveWeisAnn([a, b]).seat, 0);
+  assert.equal(R.resolveWeisAnn([b, a]).seat, 0);
+});
+
+test('weis: same cards -> first announcer wins', () => {
+  const best = R.bestWeis([c('R', '7'), c('R', '8'), c('R', '9')]);
+  const first = { seat: 2, order: 1, best };
+  const second = { seat: 3, order: 2, best: R.bestWeis([c('S', '7'), c('S', '8'), c('S', '9')]) };
+  assert.equal(R.resolveWeisAnn([second, first]).seat, 2);
+});
+
+test('weis: higher class beats higher top card', () => {
+  const fourBlatt = { seat: 0, order: 2, best: R.bestWeis([c('R', '6'), c('R', '7'), c('R', '8'), c('R', '9')]) };
+  const threeBlatt = { seat: 1, order: 1, best: R.bestWeis([c('S', 'A'), c('S', 'K'), c('S', 'O')]) };
+  assert.equal(R.resolveWeisAnn([threeBlatt, fourBlatt]).seat, 0);
+});
+
+test('obenabe: card points sum to 152 without trump', () => {
+  const sum = R.makeDeck().reduce((a, x) => a + R.cardPoints(x, null), 0);
+  assert.equal(sum, 152);
 });
 
 test('round score: 157 base, last trick bonus, schilten doubles', () => {

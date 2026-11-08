@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Schieber | Jasstisch</title>
+  <meta name="description" content="Schieber online spielen: Jass gegen den Computer, direkt im Browser.">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="game-page">
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Jasstisch</a>
+    <nav>
+      <a href="index.html">Spielen</a>
+      <a href="rules.html">Regeln</a>
+    </nav>
+  </header>
+
+  <!-- Einstellungen -->
+  <main id="setup" class="setup">
+    <a class="back" href="index.html">&larr; Zurück</a>
+    <h1>Schieber</h1>
+    <p class="lead">Das klassische Schweizer Jass-Spiel für 4 Spieler in 2er-Teams. Wähle Trumpf und versuche, die Gegner zu überbieten.</p>
+
+    <div class="mode-grid">
+      <button type="button" class="mode on" aria-pressed="true">
+        <strong>Gegen Computer</strong>
+        <span>Gegen KI-Gegner üben</span>
+      </button>
+      <button type="button" class="mode" disabled>
+        <strong>Online spielen</strong>
+        <span>Demnächst verfügbar</span>
+      </button>
+    </div>
+
+    <section class="panel">
+      <h2>Regeln</h2>
+      <div class="field">
+        <span class="label">Zielpunktzahl</span>
+        <div class="seg">
+          <label><input type="radio" name="target" value="1000" checked><span>1000</span></label>
+          <label><input type="radio" name="target" value="1500"><span>1500</span></label>
+        </div>
+      </div>
+      <label class="switch"><input type="checkbox" id="opt-weis" checked><span></span> <div><b>Weisen</b><small>Kartenkombinationen für Bonuspunkte ansagen</small></div></label>
+      <label class="switch"><input type="checkbox" id="opt-stoeck" checked><span></span> <div><b>Stöck</b><small>Trumpf König-Dame Paar: +20 Punkte</small></div></label>
+      <label class="switch"><input type="checkbox" id="opt-match"><span></span> <div><b>Match Bonus</b><small>+100 Punkte, wenn alle 9 Stiche gewonnen werden</small></div></label>
+      <label class="switch"><input type="checkbox" id="opt-schilten" checked><span></span> <div><b>Schilten doppelt</b><small>Alle Punkte werden verdoppelt, wenn Schilten Trumpf ist</small></div></label>
+      <label class="switch"><input type="checkbox" id="opt-schellen7"><span></span> <div><b>Schellen-7 bestimmt</b><small>Wer die Schellen-7 hat, wählt den Trumpf</small></div></label>
+    </section>
+
+    <button type="button" class="btn primary wide" id="btn-start">Spiel starten</button>
+    <p class="muted small">Gratis. Ohne Registrierung. Läuft im Browser.</p>
+  </main>
+
+  <!-- Tisch -->
+  <main id="table" class="table-view" hidden>
+    <div class="table-layout">
+      <section class="board" aria-label="Spieltisch">
+        <div class="seat" id="seat-2"></div>
+        <div class="seat" id="seat-3"></div>
+        <div class="seat" id="seat-1"></div>
+
+        <div class="felt">
+          <div class="felt-top">
+            <span class="trumpbadge" id="trumpbadge">Kein Trumpf</span>
+            <span class="target" id="target"></span>
+          </div>
+          <div class="weis-slot" id="weis"></div>
+          <div class="trick" id="trick"></div>
+          <div class="felt-center">
+            <div class="felt-msg" id="felt-msg" aria-live="polite"></div>
+            <div class="picker" id="picker"></div>
+          </div>
+        </div>
+
+        <div class="seat" id="seat-0"></div>
+        <div class="hand" id="hand"></div>
+      </section>
+
+      <aside class="side" aria-label="Punktestand">
+        <div class="score">
+          <div class="team-score team0" id="score-0"></div>
+          <div class="team-score team1" id="score-1"></div>
+        </div>
+        <div class="tabs">
+          <button type="button" class="on" data-tab="chalk">Jasstafel</button>
+          <button type="button" data-tab="history">Spielverlauf</button>
+        </div>
+        <div id="tab-chalk" class="chalk" aria-label="Kreidetafel">
+          <div id="chalk" class="chalk-row"></div>
+        </div>
+        <div id="tab-history" class="history" hidden>
+          <div id="history"></div>
+        </div>
+        <button type="button" class="btn ghost small" id="btn-leave">Spiel verlassen</button>
+      </aside>
+    </div>
+
+    <div class="modal" id="modal" hidden>
+      <div class="sheet" role="dialog" aria-modal="true"></div>
+    </div>
+  </main>
+
+  <script src="js/rules.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>

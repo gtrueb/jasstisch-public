@@ -127,27 +127,34 @@
         if (ev && ev.type === 'schieben') msg = SEAT_NAMES[ev.seat] + ' schiebt an ' + SEAT_NAMES[st.chooser] + ' …';
       }
     } else if (st.phase === 'play') {
-      if (st.turnSeat === 0) msg = 'Du bist dran';
+      if (st.turnSeat === null) msg = '';
+      else if (st.turnSeat === 0) msg = 'Du bist dran';
       else if (st.plays.length === 0) msg = SEAT_NAMES[st.turnSeat] + ' spielt aus';
       else msg = SEAT_NAMES[st.turnSeat] + ' ist dran';
       if (ev && ev.type === 'stoeck') msg = 'Stöck: +' + R.STOECK_PTS + ' für ' + teamName(ev.seat % 2);
     }
 
+    // Weis-Schaltfläche: nur im ersten Stich, auf dem eigenen Zug.
+    if (st.phase === 'play' && st.humanBest && st.turnSeat === 0 && st.trickNo === 0 && settings.weis) {
+      picker = '<button type="button" class="schieben" id="btn-weis">Weis ansagen: ' + esc(st.humanBest.label) + ' (' + st.humanBest.pts + ')</button>';
+    }
+
+    // Weisen-Anzeige: alle Ansagen. Nach dem ersten Stich gilt nur der Gewinner.
     var weis = '';
-    if (st.phase === 'play' && st.trickNo === 0 && st.weisRes && settings.weis) {
-      var best = st.weisRes;
-      weis = '<div class="weis"><b>Weisen</b>' +
-        [0, 1].map(function (t) {
-          var pts = best.total[t];
-          var counted = best.pts[t] > 0;
-          var cls = counted ? 'won' : (pts > 0 ? 'lost' : '');
-          return '<span class="' + cls + '">' + esc(teamName(t)) + ': ' + (pts ? pts : '0') + (pts && !counted ? ' (nicht gezählt)' : '') + '</span>';
-        }).join('') + '</div>';
+    if (settings.weis && st.phase === 'play' && st.trickNo <= 1) {
+      var rows = st.weisAnn.map(function (a) {
+        var won = st.weisRes && st.weisRes.seat === a.seat;
+        var cls = st.trickNo === 0 ? '' : (won ? 'won' : 'lost');
+        return '<span class="' + cls + '">' + esc(SEAT_NAMES[a.seat]) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
+      });
+      weis = '<div class="weis"><b>Weisen</b>' + (rows.length ? rows.join('') : '<span class="lost">Keine</span>') + '</div>';
     }
 
     $('felt-msg').textContent = msg;
     $('picker').innerHTML = picker;
     $('weis').innerHTML = weis;
+    var bw = $('btn-weis');
+    if (bw) bw.addEventListener('click', function () { game.humanAnnounce(); });
     $('trumpbadge').innerHTML = st.trump ? '<span class="suit-' + st.trump + '">' + ICON[st.trump] + '</span> ' + trumpLabel(st.trump) : 'Kein Trumpf';
     $('trumpbadge').className = 'trumpbadge' + (st.trump ? ' suit-' + st.trump : '');
 

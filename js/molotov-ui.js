@@ -99,7 +99,8 @@
     if (st.phase === 'deal') {
       msg = 'Karten werden gemischt …';
     } else if (st.phase === 'play') {
-      if (st.turnSeat === 0) msg = 'Du bist dran';
+      if (st.turnSeat === null) msg = '';
+      else if (st.turnSeat === 0) msg = 'Du bist dran';
       else if (st.plays.length === 0) msg = SEAT_NAMES[st.turnSeat] + ' spielt aus';
       else msg = SEAT_NAMES[st.turnSeat] + ' ist dran';
       if (ev && ev.type === 'trump') msg = (ev.seat === 0 ? 'Du bestimmst' : SEAT_NAMES[ev.seat] + ' bestimmt') + ' den Trumpf: ' + SUIT_LABEL[ev.suit];
@@ -107,19 +108,28 @@
     }
     $('felt-msg').textContent = msg;
 
+    if (st.phase === 'play' && st.humanBest && st.turnSeat === 0 && st.trickNo === 0 && st.cfg.weis) {
+      $('picker').innerHTML = '<button type="button" class="schieben" id="btn-weis">Weis ansagen: ' + esc(st.humanBest.label) + ' (' + st.humanBest.pts + ')</button>';
+    } else {
+      $('picker').innerHTML = '';
+    }
     var weis = '';
-    if (st.phase === 'play' && st.trickNo === 0 && st.cfg.weis) {
-      var rows = [0, 1, 2, 3].filter(function (s) { return st.weisPts[s] > 0; }).map(function (s) {
-        return '<span>' + esc(SEAT_NAMES[s]) + ': ' + st.weisPts[s] + '</span>';
+    if (st.phase === 'play' && st.cfg.weis && st.trickNo <= 1) {
+      var rows = st.weisAnn.map(function (a) {
+        var won = st.weisRes && st.weisRes.seat === a.seat;
+        var cls = st.trickNo === 0 ? '' : (won ? 'won' : 'lost');
+        return '<span class="' + cls + '">' + esc(SEAT_NAMES[a.seat]) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
       });
-      weis = rows.length ? '<div class="weis"><b>Weisen</b>' + rows.join('') + '</div>' : '';
+      weis = '<div class="weis"><b>Weisen (Minus)</b>' + (rows.length ? rows.join('') : '<span class="lost">Keine</span>') + '</div>';
     }
     $('weis').innerHTML = weis;
+    var bw = $('btn-weis');
+    if (bw) bw.addEventListener('click', function () { game.humanAnnounce(); });
 
     var badge = $('trumpbadge');
     badge.innerHTML = st.trump
       ? '<span class="suit-' + st.trump + '">' + ICON[st.trump] + '</span> ' + SUIT_LABEL[st.trump]
-      : 'Noch kein Trumpf';
+      : 'Obenabe';
     badge.className = 'trumpbadge' + (st.trump ? ' suit-' + st.trump : '');
   }
 
@@ -128,7 +138,7 @@
     var tg = st.cfg.end === 'limit' ? st.cfg.limit : null;
     [0, 1, 2, 3].forEach(function (s) {
       var v = st.totals[s];
-      var pct = tg ? Math.min(100, (v / tg) * 100) : Math.min(100, (v / Math.max(max, 1)) * 100);
+      var pct = Math.max(0, tg ? Math.min(100, (v / tg) * 100) : Math.min(100, (v / Math.max(max, 1)) * 100));
       $('score-' + s).innerHTML = '<div class="row"><span class="dot"></span><span class="name">' + esc(SEAT_NAMES[s]) +
         '</span><b>' + v + '</b></div><div class="bar"><i style="width:' + pct + '%"></i></div>';
     });
@@ -200,9 +210,10 @@
     var head = '<div class="row head"><span></span>' + SEAT_NAMES.map(function (n) { return '<span>' + esc(n) + '</span>'; }).join('') + '</div>';
     var extra = '';
     if (sc.bonus.some(Boolean)) extra += row('Letzter Stich', sc.bonus);
-    if (sc.weis.some(Boolean)) extra += row('Weisen', sc.weis);
-    if (sc.stoeck.some(Boolean)) extra += row('Stöck', sc.stoeck);
-    var pillText = sc.trump ? 'Trumpf: ' + SUIT_LABEL[sc.trump] : 'Kein Trumpf in dieser Runde';
+    if (sc.tisch.some(Boolean)) extra += row('Tischweis', sc.tisch);
+    if (sc.weis.some(Boolean)) extra += row('Weisen (Minus)', sc.weis);
+    if (sc.stoeck.some(Boolean)) extra += row('Stöck (Minus)', sc.stoeck);
+    var pillText = sc.trump ? 'Trumpf: ' + SUIT_LABEL[sc.trump] : 'Obenabe (kein Trumpf)';
     var rule = over ? '' : '<p class="muted">Striche = Punkte auf 10 gerundet, durch 10 geteilt</p>';
     m.querySelector('.sheet').innerHTML =
       '<h2 id="modal-title">' + esc(title) + '</h2>' +
@@ -248,7 +259,7 @@
     return {
       end: e === 'limit' ? 'limit' : 'rounds',
       limit: 50,
-      rounds: e === 'rounds12' ? 12 : 9,
+      rounds: e === 'rounds12' ? 12 : 8,
       weis: $('opt-weis').checked,
       stoeck: $('opt-stoeck').checked,
       lastTrick: $('opt-last').checked

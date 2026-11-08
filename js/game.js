@@ -1,16 +1,16 @@
 /*
- * Spielablauf für Schieber: Runden, Trumpfwahl, Stiche, Wertung.
- * Keine Anzeige hier. Die Oberfläche (ui.js) liest den Zustand und
- * ruft humanChooseTrump / humanSchieben / humanPlay auf.
+ * Spielablauf für Schieber: Runden, Trumpfwahl, Weisen, Stiche, Wertung.
+ * Keine Anzeige hier. Die Oberfläche (ui.js) liest den Zustand und ruft
+ * humanChooseTrump / humanSchieben / humanAnnounce / humanPlay auf.
  */
 (function (root) {
   'use strict';
 
   var R = (typeof module === 'object' && module.exports) ? require('./rules.js') : root.JassRules;
-  var AI = (typeof module === 'object' && module.exports) ? require('./ai.js') : root.JassAI;
+  var AIS = (typeof module === 'object' && module.exports) ? require('./ai-schieber.js') : root.JassAISchieber;
 
   // Zeiten in Millisekunden. Auf jassli.ch gemessen: ca. 10-12 s pro Stich, KI-Karte ca. 2.5-3 s.
-  var DEFAULT_DELAYS = { deal: 1800, weis: 3000, aiMin: 2300, aiMax: 3200, trickShow: 2000, trump: 3500 };
+  var DEFAULT_DELAYS = { deal: 1800, aiMin: 2300, aiMax: 3200, trickShow: 2000, trump: 3500 };
 
   function Game(cfg) {
     cfg = cfg || {};
@@ -26,13 +26,14 @@
     this.sched = cfg.sched || function (fn, ms) { return setTimeout(fn, ms); };
     this.rnd = cfg.rnd || Math.random;
     this.onUpdate = cfg.onUpdate || function () {};
+    this.ai = AIS.createPlayer({ level: cfg.aiLevel || 'normal' });
     this.humanSeat = 0;
     this.totals = [0, 0];
     this.history = [];
     this.roundNo = 0;
     this.dealer = Math.floor(this.rnd() * 4);
-    this.phase = 'idle';   // idle | trump | play | roundEnd | gameEnd
-    this.timer = null;
+    this.phase = 'idle';   // idle | deal | trump | play | roundEnd | gameEnd
+    this.pending = false;
     this.gameWinner = null;
     this.lastEvent = null;
   }
@@ -59,19 +60,21 @@
     this.hands = [0, 1, 2, 3].map(function (s) { return deck.slice(s * 9, s * 9 + 9); });
     this.trump = null;
     this.plays = [];
-    this.schellen7Holder = -1;
     this.wonTricks = [[], []];
     this.trickWins = [0, 0, 0, 0];
     this.lastTeam = null;
     this.stoeck = [0, 0];
     this.stoeckPair = [false, false, false, false];
     this.playedKO = [[], [], [], []];
-    this.weisRes = null;
-    this.meldsBySeat = null;
-    this.weisShown = false;
     this.leader = this.vorhand;
     this.trickNo = 0;
     this.lastEvent = null;
+    // Weisen: nur im ersten Stich, nur auf dem eigenen Zug.
+    this.weisDecided = [false, false, false, false];
+    this.weisAnn = [];       // [{seat, best, order}] in Ansagereihenfolge
+    this.annCounter = 0;
+    this.weisRes = null;     // Gewinner der Weisen, nach dem ersten Stich
+    this.lastScore = null;
 
     var holder = -1;
     if (this.cfg.schellen7) {
@@ -101,11 +104,6 @@
     }
     if (this.phase !== 'play') return;
 
-    if (this.trickNo === 0 && this.plays.length === 0 && !this.weisShown && this.cfg.weis) {
-      this.weisShown = true;
-      this.wait(this.delays.weis, null);
-      return;
-    }
     if (this.plays.length === 4) {
       this.wait(this.delays.trickShow, this.finishTrick.bind(this));
       return;
@@ -123,8 +121,30 @@
     return (this.leader + this.plays.length) % 4;
   };
 
+  // Weis ansagen. Nur im ersten Stich auf dem eigenen Zug, nur einmal.
+  Game.prototype.announceWeis = function (seat) {
+    if (!this.cfg.weis || this.trickNo !== 0 || this.phase !== 'play') return false;
+    if (this.turnSeat() !== seat || this.weisDecided[seat]) return false;
+    this.weisDecided[seat] = true;
+    var best = R.bestWeis(this.hands[seat]);
+    if (best) this.weisAnn.push({ seat: seat, best: best, order: ++this.annCounter });
+    this.lastEvent = best ? { type: 'weis', seat: seat, label: best.label, pts: best.pts } : this.lastEvent;
+    return !!best;
+  };
+
+  Game.prototype.humanAnnounce = function () {
+    var ok = this.announceWeis(this.humanSeat);
+    this.emit();
+    return ok;
+  };
+
+  // Die beste Weisen-Kombination des Menschen (für die Schaltfläche), oder null.
+  Game.prototype.humanBestWeis = function () {
+    return R.bestWeis(this.hands[this.humanSeat] || []);
+  };
+
   Game.prototype.aiTrump = function () {
-    var d = AI.chooseTrump(this.hands[this.chooser], { canSchieben: this.canSchieben });
+    var d = this.ai.chooseTrump(this.hands[this.chooser], { canSchieben: this.canSchieben });
     if (d.action === 'schieben') {
       this.doSchieben();
     } else {
@@ -156,31 +176,30 @@
   };
 
   Game.prototype.setTrump = function (suit) {
-    var self = this;
     this.trump = suit;
     this.phase = 'play';
-    this.hands.forEach(function (h, s) {
+    this.stoeckPair = this.hands.map(function (h) {
       var k = h.some(function (c) { return c.s === suit && c.r === 'K'; });
       var o = h.some(function (c) { return c.s === suit && c.r === 'O'; });
-      self.stoeckPair[s] = k && o;
+      return k && o;
     });
-    this.meldsBySeat = this.hands.map(function (h) { return self.cfg.weis ? R.bestMelds(h).melds : []; });
-    this.weisRes = R.resolveWeis(this.meldsBySeat, suit, this.vorhand % 2);
     this.lastEvent = { type: 'trump', suit: suit, seat: this.chooser };
   };
 
   // Karte spielen. Gibt false zurück, wenn die Karte nicht erlaubt ist.
   Game.prototype.playCard = function (seat, card) {
     if (this.phase !== 'play' || this.turnSeat() !== seat) return false;
-    if (this.lastEvent && this.lastEvent.type === 'stoeck') this.lastEvent = null;
     var legal = R.legalCards(this.hands[seat], this.plays, this.trump);
-    var ok = legal.some(function (c) { return c.id === card.id; });
-    if (!ok) return false;
+    if (!legal.some(function (c) { return c.id === card.id; })) return false;
+
+    // Wer im ersten Stich spielt, ohne anzusagen, verzichtet auf seinen Weis.
+    if (this.trickNo === 0 && !this.weisDecided[seat]) this.weisDecided[seat] = true;
+    if (this.lastEvent && (this.lastEvent.type === 'stoeck' || this.lastEvent.type === 'weis')) this.lastEvent = null;
 
     this.hands[seat] = this.hands[seat].filter(function (c) { return c.id !== card.id; });
     this.plays.push({ seat: seat, card: card });
 
-    if (this.cfg.stoeck && card.s === this.trump && (card.r === 'K' || card.r === 'O')) {
+    if (this.cfg.stoeck && this.trump && card.s === this.trump && (card.r === 'K' || card.r === 'O')) {
       this.playedKO[seat].push(card.r);
       if (this.stoeckPair[seat] && this.playedKO[seat].length === 2) {
         this.stoeck[seat % 2] += R.STOECK_PTS;
@@ -194,7 +213,8 @@
 
   Game.prototype.aiPlay = function () {
     var seat = this.turnSeat();
-    var card = AI.choosePlay(this.hands[seat], this.plays, this.trump, seat);
+    if (this.trickNo === 0 && !this.weisDecided[seat]) this.announceWeis(seat);
+    var card = this.ai.choosePlay(this.hands[seat], this.plays, this.trump, seat);
     this.playCard(seat, card);
   };
 
@@ -219,6 +239,7 @@
     this.trickNo++;
     this.leader = winner;
     this.lastEvent = null;
+    if (this.trickNo === 1) this.weisRes = R.resolveWeisAnn(this.weisAnn);
     if (this.trickNo === 9) {
       this.lastTeam = winner % 2;
       this.endRound();
@@ -230,9 +251,14 @@
       trump: this.trump,
       matchBonus: this.cfg.matchBonus,
       doubled: this.cfg.schilten2 && this.trump === 'L',
-      weis: this.weisRes ? this.weisRes.pts : [0, 0],
+      weis: [0, 0],
       stoeck: this.stoeck
     });
+    // Nur der Spieler mit der stärksten Weisen-Kombination zählt. Sein Team bekommt die Punkte.
+    var weis = [0, 0];
+    if (this.weisRes) weis[this.weisRes.seat % 2] = this.weisRes.pts * sc.factor;
+    sc.weis = weis;
+    sc.total = [0, 1].map(function (t) { return (sc.card[t] + sc.match[t] + sc.stoeck[t]) * sc.factor + weis[t]; });
     this.totals[0] += sc.total[0];
     this.totals[1] += sc.total[1];
     this.history.push({ round: this.roundNo, dealer: this.dealer, trump: this.trump, score: sc, totals: this.totals.slice() });
@@ -271,8 +297,11 @@
       dealer: this.dealer,
       totals: this.totals,
       target: this.cfg.target,
-      weisRes: this.weisRes,
-      meldsBySeat: this.meldsBySeat,
+      cfg: this.cfg,
+      weisAnn: this.weisAnn.map(function (a) { return { seat: a.seat, label: a.best.label, pts: a.best.pts, order: a.order }; }),
+      weisRes: this.weisRes ? { seat: this.weisRes.seat, label: this.weisRes.label, pts: this.weisRes.pts } : null,
+      humanBest: this.phase === 'play' && this.trickNo === 0 && !this.weisDecided[this.humanSeat] ? this.humanBestWeis() : null,
+      humanWeisDone: this.weisDecided[this.humanSeat],
       lastEvent: this.lastEvent,
       lastScore: this.lastScore,
       history: this.history,

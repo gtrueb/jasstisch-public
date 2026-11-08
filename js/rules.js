@@ -13,7 +13,10 @@
   // Rangfolge: höhere Zahl = stärker
   var ORDER_TRUMP = { '6': 0, '7': 1, '8': 2, '10': 3, O: 4, K: 5, A: 6, '9': 7, U: 8 };
   var ORDER_PLAIN = { '6': 0, '7': 1, '8': 2, '9': 3, '10': 4, U: 5, O: 6, K: 7, A: 8 };
+  // Obenabe (ohne Trumpf): 8 zählt 8 Punkte. Summe über alle Karten = 152.
+  var PTS_OBENABE = { A: 11, '10': 10, K: 4, O: 3, U: 2, '8': 8, '9': 0, '7': 0, '6': 0 };
   var SEQ_PTS = { 3: 20, 4: 50, 5: 100 };
+  var WEIS_LABEL = { 5: 'Vierling', 4: '5-Blatt', 3: '4-Blatt', 2: '2× 3-Blatt', 1: '3-Blatt' };
   var LAST_TRICK_BONUS = 5;
   var MATCH_BONUS = 100;
   var STOECK_PTS = 20;
@@ -35,7 +38,9 @@
     return a;
   }
 
+  // trump === null bedeutet Obenabe (kein Trumpf gesetzt)
   function cardPoints(c, trump) {
+    if (trump === null || trump === undefined) return PTS_OBENABE[c.r];
     return c.s === trump ? PTS_TRUMP[c.r] : PTS_PLAIN[c.r];
   }
 
@@ -170,38 +175,6 @@
     return best;
   }
 
-  // true, wenn Weis a die Weis b schlägt
-  function meldBetter(a, b, trump) {
-    if (!b) return !!a;
-    if (!a) return false;
-    if (a.pts !== b.pts) return a.pts > b.pts;
-    if (a.n !== b.n) return a.n > b.n;
-    if (a.top !== b.top) return a.top > b.top;
-    return a.suit === trump && b.suit !== trump;
-  }
-
-  // Nur das Team mit der stärksten Weis zählt seine Weisen.
-  function resolveWeis(meldsBySeat, trump, vorhandTeam) {
-    var total = [0, 0], best = [null, null], seat;
-    for (seat = 0; seat < 4; seat++) {
-      var t = seat % 2;
-      meldsBySeat[seat].forEach(function (m) {
-        total[t] += m.pts;
-        if (meldBetter(m, best[t], trump)) best[t] = m;
-      });
-    }
-    var pts = [0, 0], winner = -1;
-    if (best[0] || best[1]) {
-      if (!best[0]) winner = 1;
-      else if (!best[1]) winner = 0;
-      else if (meldBetter(best[0], best[1], trump)) winner = 0;
-      else if (meldBetter(best[1], best[0], trump)) winner = 1;
-      else winner = vorhandTeam;
-      pts[winner] = total[winner];
-    }
-    return { pts: pts, winner: winner, best: best, total: total };
-  }
-
   /*
    * Rundenwertung.
    * wonTricks: [team0Tricks, team1Tricks], jeder Stich = Array von Karten
@@ -225,7 +198,92 @@
     return { card: card, match: match, stoeck: o.stoeck, weis: o.weis, total: total, factor: f };
   }
 
+  // ---- Weisen-Vergleich (nur die beste Weisen-Kombination eines Spielers zählt) ----
+  // Rangfolge: Vierling > 5-Blatt > 4-Blatt > 2× 3-Blatt > 3-Blatt.
+  // Gleiche Klasse: höhere oberste Karte gewinnt. Beim Vierling zählt zuerst der Wert (Under 200, Nell 150).
+  function weisGreater(a, b) {
+    if (!a) return false;
+    if (!b) return true;
+    if (a.cls !== b.cls) return a.cls > b.cls;
+    if (a.cls === 5 && a.pts !== b.pts) return a.pts > b.pts;
+    return a.top > b.top;
+  }
+
+  // Beste Weisen-Kombination einer Hand. Gibt null zurück, wenn es keine gibt.
+  function bestWeis(hand) {
+    var best = null;
+    function consider(c) {
+      c.label = WEIS_LABEL[c.cls];
+      if (weisGreater(c, best)) best = c;
+    }
+    ['9', '10', 'U', 'O', 'K', 'A'].forEach(function (r) {
+      var cs = hand.filter(function (c) { return c.r === r; });
+      if (cs.length === 4) consider({ cls: 5, pts: fourPts(r), top: ORDER_PLAIN[r], cards: cs });
+    });
+    var windows3 = [];
+    SUITS.forEach(function (s) {
+      var idx = {};
+      hand.forEach(function (c) { if (c.s === s) idx[ORDER_PLAIN[c.r]] = c; });
+      for (var st = 0; st <= 8; st++) {
+        for (var len = 3; len <= 5 && st + len - 1 <= 8; len++) {
+          var cs = [], ok = true, k;
+          for (k = 0; k < len; k++) {
+            if (!idx[st + k]) { ok = false; break; }
+            cs.push(idx[st + k]);
+          }
+          if (!ok) continue;
+          var cand = { cls: len === 5 ? 4 : (len === 4 ? 3 : 1), pts: SEQ_PTS[len], top: st + len - 1, cards: cs, suit: s };
+          if (len === 3) windows3.push(cand);
+          else consider(cand);
+        }
+      }
+    });
+    windows3.forEach(consider);
+    for (var i = 0; i < windows3.length; i++) {
+      for (var j = i + 1; j < windows3.length; j++) {
+        var a = windows3[i], b = windows3[j];
+        var disjoint = a.cards.every(function (x) {
+          return !b.cards.some(function (y) { return y.id === x.id; });
+        });
+        if (disjoint) {
+          consider({ cls: 2, pts: 40, top: Math.max(a.top, b.top), cards: a.cards.concat(b.cards) });
+        }
+      }
+    }
+    return best;
+  }
+
+  // anns: [{seat, best, order}] in Ansagereihenfolge. Gleich stark: wer zuerst ansagt, gewinnt.
+  function resolveWeisAnn(anns) {
+    var win = null;
+    anns.forEach(function (a) {
+      if (!win || weisGreater(a.best, win.best)) win = a;
+      else if (!weisGreater(win.best, a.best) && a.order < win.order) win = a;
+    });
+    return win ? { seat: win.seat, best: win.best, pts: win.best.pts, label: win.best.label } : null;
+  }
+
+  // Tischweis: Weispunkte, die die vier Karten eines Stichs bilden (Molotow).
+  function tischWeis(cards) {
+    return bestMelds(cards).pts;
+  }
+
+  // Molotow: jeder bedient die Farbe, wenn er kann. Sonst darf er jede Karte spielen.
+  function legalFree(hand, plays) {
+    if (!plays.length) return hand.slice();
+    var led = plays[0].card.s;
+    var follow = hand.filter(function (c) { return c.s === led; });
+    return follow.length ? follow : hand.slice();
+  }
+
   var api = {
+    WEIS_LABEL: WEIS_LABEL,
+    bestWeis: bestWeis,
+    weisGreater: weisGreater,
+    resolveWeisAnn: resolveWeisAnn,
+    tischWeis: tischWeis,
+    legalFree: legalFree,
+    PTS_OBENABE: PTS_OBENABE,
     SUITS: SUITS,
     SUIT_NAME: SUIT_NAME,
     RANKS: RANKS,
@@ -243,8 +301,6 @@
     winnerIndex: winnerIndex,
     legalCards: legalCards,
     bestMelds: bestMelds,
-    meldBetter: meldBetter,
-    resolveWeis: resolveWeis,
     roundScore: roundScore
   };
 

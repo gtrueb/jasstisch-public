@@ -6,8 +6,8 @@
   --ink: #111111;
   --muted: #6b6a66;
   --line: #e2ded4;
-  --felt: #e9e4d7;
-  --felt-edge: #d8d1bf;
+  --felt: #2f6b45;
+  --felt-edge: #1b4429;
   --blue: #2f6fdb;
   --red: #d8433d;
   --suit-R: #c8372d;
@@ -200,10 +200,10 @@ h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
   aspect-ratio: 1 / 1;
   max-width: 400px;
   min-height: 300px;
-  background: radial-gradient(circle at 50% 40%, #f1ede2 0%, var(--felt) 70%);
-  border: 1px solid var(--felt-edge);
+  background: radial-gradient(circle at 50% 40%, #3c7d55 0%, var(--felt) 70%);
+  border: 6px solid #6b4a2b;
   border-radius: 28px;
-  box-shadow: inset 0 0 40px rgba(0,0,0,0.04);
+  box-shadow: inset 0 0 50px rgba(0,0,0,0.25), 0 6px 18px rgba(0,0,0,0.12);
   overflow: hidden;
 }
 .felt-top {
@@ -227,7 +227,7 @@ h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
   z-index: 3; pointer-events: none;
 }
 .felt-center > * { pointer-events: auto; }
-.felt-msg { font-weight: 600; color: #3a3935; text-align: center; font-size: 0.98rem; }
+.felt-msg { font-weight: 600; color: #f3f7f1; text-align: center; font-size: 0.98rem; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
 .weis-slot { position: absolute; left: 10px; bottom: 10px; z-index: 3; pointer-events: none; max-width: 150px; }
 .weis { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 6px 8px; font-size: 0.75rem; display: flex; flex-direction: column; gap: 2px; text-align: left; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
 .weis span.lost { text-decoration: line-through; color: var(--muted); }

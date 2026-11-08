@@ -306,7 +306,7 @@
       '<div class="row"><span>Stand</span><span>' + st.totals[0] + '</span><span>' + st.totals[1] + '</span></div>' +
       '</div>' + weisBlockSchieber(sc) + dbl +
       (over
-        ? '<button type="button" class="btn primary" id="btn-again">Neues Spiel</button>' +
+        ? (game && game.online ? '' : '<button type="button" class="btn primary" id="btn-again">Neues Spiel</button>') +
           '<button type="button" class="btn ghost" id="btn-menu-end">Zum Menü</button>'
         : '<button type="button" class="btn primary" id="btn-next">Weiter</button>');
     m.hidden = false;
@@ -382,6 +382,7 @@
   function showSetup() {
     if (game && game.stop) game.stop();
     game = null;
+    $('btn-reset').hidden = false;
     $('table').hidden = true;
     $('setup').hidden = false;
     $('modal').hidden = true;
@@ -406,6 +407,7 @@
     if (leave) leave.addEventListener('click', showSetup);
     var reset = $('btn-reset');
     if (reset) reset.addEventListener('click', function () {
+      if (game && game.online) return;   // Online: "Neu" würde die Verbindung nicht beenden, also aus
       // Neu beginnen mit den gleichen Einstellungen (oder den Einstellungen der Startseite).
       startGame(game && lastSettings ? lastSettings : readSettings());
     });
@@ -424,6 +426,7 @@
   function attachOnline(adapter, settings) {
     game = adapter;
     lastSettings = settings || readSettings();
+    $('btn-reset').hidden = true;   // Online: kein "Neu" (würde auf ein lokales Spiel springen)
     $('setup').hidden = true;
     $('table').hidden = false;
     $('modal').hidden = true;

@@ -6,7 +6,7 @@
   <title>Schieber | Jasstisch</title>
   <meta name="description" content="Schieber online spielen: Jass gegen den Computer, direkt im Browser.">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/style.css?v=9">
+  <link rel="stylesheet" href="assets/style.css?v=16">
 </head>
 <body class="game-page" data-game="schieber">
   <header class="topbar">
@@ -31,14 +31,14 @@
     <h1>Schieber</h1>
     <p class="lead">Das klassische Schweizer Jass-Spiel für 4 Spieler in 2er-Teams. Wähle Trumpf und versuche, die Gegner zu überbieten.</p>
 
-    <div class="mode-grid">
-      <button type="button" class="mode on" aria-pressed="true">
+    <div class="mode-grid" role="group" aria-label="Spielmodus">
+      <button type="button" class="mode on" id="mode-online" data-mode="online" aria-pressed="true">
+        <strong>Online spielen</strong>
+        <span>Lobby erstellen oder Code eingeben</span>
+      </button>
+      <button type="button" class="mode" id="mode-local" data-mode="local" aria-pressed="false">
         <strong>Gegen Computer</strong>
         <span>Gegen KI-Gegner üben</span>
-      </button>
-      <button type="button" class="mode" disabled>
-        <strong>Online spielen</strong>
-        <span>Demnächst verfügbar</span>
       </button>
     </div>
 
@@ -88,7 +88,8 @@
         <div class="hand" id="hand"></div>
       </section>
 
-      <aside class="side" aria-label="Punktestand">
+      <aside class="side" aria-label="Jasstafel">
+        <section class="jasstafel">
         <div class="score">
           <div class="team-score team0" id="score-0"></div>
           <div class="team-score team1" id="score-1"></div>
@@ -103,6 +104,7 @@
         <div id="tab-history" class="history" hidden>
           <div id="history"></div>
         </div>
+        </section>
         <button type="button" class="btn ghost small" id="btn-leave">Spiel verlassen</button>
       </aside>
     </div>
@@ -118,12 +120,12 @@
   <script src="js/ai-schieber.js?v=11"></script>
   <script src="js/game.js?v=13"></script>
   <script src="js/fx.js?v=9"></script>
-  <script src="js/ui.js?v=13"></script>
+  <script src="js/ui.js?v=14"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="js/mental.js?v=11"></script>
   <script src="js/mental-round.js?v=13"></script>
   <script src="js/view.js?v=11"></script>
-  <script src="js/online.js?v=13"></script>
-  <script src="js/lobby-ui.js?v=11"></script>
+  <script src="js/online.js?v=14"></script>
+  <script src="js/lobby-ui.js?v=15"></script>
 </body>
 </html>

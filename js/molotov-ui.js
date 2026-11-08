@@ -348,7 +348,7 @@
       row('Stand', st.totals) +
       '</div>' + weisBlock + rule +
       (over
-        ? '<button type="button" class="btn primary" id="btn-again">Neues Spiel</button>' +
+        ? (game && game.online ? '' : '<button type="button" class="btn primary" id="btn-again">Neues Spiel</button>') +
           '<button type="button" class="btn ghost" id="btn-menu-end">Zum Menü</button>'
         : '<button type="button" class="btn primary" id="btn-next">Weiter</button>');
     m.hidden = false;
@@ -378,12 +378,17 @@
     checkToasts(st);
   }
 
+  // Spielerzahl aus der Anzahl-Auswahl. Standard: 3 Spieler.
+  function readPlayers() {
+    var pl = document.querySelector('input[name="players"]:checked');
+    return pl && pl.value === '4' ? 4 : 3;
+  }
+
   function readSettings() {
     var end = document.querySelector('input[name="end"]:checked');
     var e = end ? end.value : 'limit';
-    var pl = document.querySelector('input[name="players"]:checked');
     return {
-      players: pl && pl.value === '3' ? 3 : 4,
+      players: readPlayers(),
       end: e === 'limit' ? 'limit' : 'rounds',
       limit: 50,
       rounds: e === 'rounds12' ? 12 : 8,
@@ -419,6 +424,7 @@
   function showSetup() {
     if (game && game.stop) game.stop();
     game = null;
+    $('btn-reset').hidden = false;
     $('table').hidden = true;
     $('setup').hidden = false;
     $('modal').hidden = true;
@@ -443,6 +449,7 @@
     if (leave) leave.addEventListener('click', showSetup);
     var reset = $('btn-reset');
     if (reset) reset.addEventListener('click', function () {
+      if (game && game.online) return;   // Online: "Neu" würde die Verbindung nicht beenden, also aus
       // Neu beginnen mit den gleichen Einstellungen (oder den Einstellungen der Startseite).
       startGame(game && lastSettings ? lastSettings : readSettings());
     });
@@ -459,9 +466,11 @@
   function attachOnline(adapter, settings) {
     game = adapter;
     lastSettings = settings || readSettings();
+    seen = null;
+    $('btn-reset').hidden = true;   // Online: kein "Neu" (würde auf ein lokales Spiel springen)
     $('setup').hidden = true;
     $('table').hidden = false;
     $('modal').hidden = true;
   }
-  window.JassMolotovUI = { startGame: startGame, showSetup: showSetup, attachOnline: attachOnline, readSettings: readSettings, render: function (g) { render(g); } };
+  window.JassMolotovUI = { startGame: startGame, showSetup: showSetup, attachOnline: attachOnline, readSettings: readSettings, readPlayers: readPlayers, render: function (g) { render(g); } };
 })();

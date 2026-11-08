@@ -274,6 +274,12 @@ h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
 .card.small { --card-w: 58px; --card-h: 89px; }
 .card.small .center b { font-size: 1.3rem; }
 .card.small .center img.suit-img { width: 20px; height: 20px; }
+/* Karten auf dem Tisch: groß genug, um die Farbe und den Rang sofort zu sehen */
+.trick .card.small { --card-w: 86px; --card-h: 128px; }
+.trick .card.small .center b { font-size: 1.8rem; }
+.trick .card.small .center img.suit-img { width: 28px; height: 28px; }
+.trick .card.small .corner { font-size: 0.95rem; }
+.trick .card.small .corner img.suit-img { width: 15px; height: 15px; }
 .card.back {
   background: repeating-linear-gradient(45deg, #24406f 0 6px, #2f5793 6px 12px);
   border: 3px solid #fffdf7;
@@ -297,11 +303,14 @@ button.card:disabled { cursor: default; }
 
 /* Seite */
 .side { display: flex; flex-direction: column; gap: 14px; }
-.score { display: flex; flex-direction: column; gap: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
-.team-score .row { display: flex; align-items: center; gap: 10px; }
-.team-score .name { flex: 1; }
-.team-score b { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
-.team-score .bar { height: 6px; background: #efece4; border-radius: 999px; margin-top: 8px; overflow: hidden; }
+/* Punktestand: schlanke Zeile in der Jasstafel, ohne eigene Box */
+.jasstafel { background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.score { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px 14px; padding: 0 2px; }
+.team-score .row { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); }
+.team-score .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-score b { font-size: 1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.team-score .dot { width: 7px; height: 7px; }
+.team-score .bar { height: 3px; background: #efece4; border-radius: 999px; margin-top: 4px; overflow: hidden; }
 .team-score .bar i { display: block; height: 100%; border-radius: 999px; }
 .team0 .bar i { background: var(--blue); }
 .team1 .bar i { background: var(--red); }
@@ -309,8 +318,8 @@ button.card:disabled { cursor: default; }
 .tabs button { flex: 1; appearance: none; border: 0; background: transparent; padding: 8px; border-radius: 9px; font: inherit; font-size: 0.9rem; cursor: pointer; color: var(--muted); }
 .tabs button.on { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
 
-.chalk { background: #1f2a24; color: #f2f2ea; border-radius: 16px; padding: 14px; min-height: 230px; box-shadow: inset 0 0 0 6px #3a2f24; }
-.chalk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chalk { background: #1f2a24; color: #f2f2ea; border-radius: 14px; padding: 12px; min-height: 180px; box-shadow: inset 0 0 0 6px #3a2f24; }
+.chalk-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 10px; }
 .chalk-col { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .chalk-name { font-size: 0.8rem; opacity: 0.8; text-align: center; }
 .chalk-marks { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; min-height: 60px; align-content: flex-start; }
@@ -353,22 +362,50 @@ button.card:disabled { cursor: default; }
   .side { display: flex; flex-direction: column; }
 }
 
+/* Handy (bis 680 px): der Tisch füllt die Breite, Jasstafel darunter, wenig Leerraum */
 @media (max-width: 680px) {
-  :root { --card-w: 62px; --card-h: 96px; }
-  .table-view { padding: 6px 8px 14px; }
-  .board { grid-template-columns: 1fr 1fr; }
+  :root { --card-w: 60px; --card-h: 93px; }
+  .topbar { padding: 8px 10px; }
+  .topbar nav { display: none; }
+  .toasts { top: 58px; }   /* Meldungen über der Kopfzeile, nicht über den Sitzen */
+  .topleft { gap: 8px; }
+  .brand { font-size: 0; gap: 0; }   /* auf dem Handy nur das Logo, der Name ist im Tab */
+  .seg label span { white-space: nowrap; padding: 6px 9px; font-size: 0.9rem; }
+  .tempo { margin-right: 0; }
+  .tempo button { font-size: 0.72rem; padding: 4px 8px; }
+  .table-view { padding: 4px 6px 12px; }
+  .board { grid-template-columns: 1fr 1fr; gap: 6px; }
   #seat-2 { grid-column: 1 / -1; grid-row: 1; }
   #seat-3 { grid-column: 1; grid-row: 2; }
   #seat-1 { grid-column: 2; grid-row: 2; }
   .felt { grid-column: 1 / -1; grid-row: 3; }
   #seat-0 { grid-column: 1 / -1; grid-row: 4; }
-  .hand { grid-column: 1 / -1; grid-row: 5; }
-  .felt { aspect-ratio: auto; height: 42vh; min-height: 250px; max-width: none; }
+  .hand { grid-column: 1 / -1; grid-row: 5; min-height: 100px; }
+  .felt { aspect-ratio: 1 / 1; height: auto; min-height: 0; max-width: none; width: 100%; border-width: 5px; border-radius: 22px; }
+  .felt-top { top: 8px; left: 8px; right: 8px; }
+  .trumpbadge, .target { font-size: 0.75rem; padding: 3px 8px; }
+  .felt-msg { font-size: 0.85rem; }
+  .weis-slot { max-width: 120px; left: 6px; bottom: 6px; }
+  .trick .card.small { --card-w: 72px; --card-h: 108px; }
+  .trick .card.small .center b { font-size: 1.45rem; }
+  .seat { min-height: 0; gap: 3px; }
+  .chip { padding: 3px 8px; font-size: 0.82rem; border-radius: 10px; }
+  .chip small { font-size: 0.72rem; }
+  #seat-1 .backs, #seat-3 .backs { display: none; }
   .hand .card + .card { margin-left: -30px; }
-  .side { grid-template-columns: 1fr; }
-  .setup, .menu { padding-left: 16px; padding-right: 16px; }
-  .mode-grid { grid-template-columns: 1fr; }
-  .topbar { padding: 12px 16px; }
+  .hand.many .card + .card { margin-left: -40px; }
+  .side { grid-template-columns: 1fr; gap: 8px; }
+  .jasstafel { padding: 10px; border-radius: 14px; gap: 8px; }
+  .chalk { min-height: 140px; padding: 10px; }
+  .setup, .menu { padding-left: 14px; padding-right: 14px; padding-top: 14px; }
+  .setup .lead { margin-bottom: 14px; font-size: 0.92rem; }
+  .mode-grid { grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .mode { padding: 12px; border-radius: 14px; }
+  .mode span { font-size: 0.78rem; }
+  .panel { padding: 14px; border-radius: 16px; }
+  .field { margin-bottom: 10px; }
+  .switch { padding: 9px 0; }
+  .btn.wide { margin-top: 12px; padding: 13px; font-size: 1rem; }
   .card.small { --card-w: 50px; --card-h: 77px; }
 }
 
@@ -381,7 +418,7 @@ button.card:disabled { cursor: default; }
 .p1 .bar i { background: var(--red); }
 .p2 .bar i { background: #2f9e5b; }
 .p3 .bar i { background: #c98a12; }
-.chalk-row { grid-template-columns: 1fr 1fr; }
+.chalk-row { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
 .chalk svg.group.single { width: 12px; height: 22px; }
 .chalk svg.group.single line { stroke-width: 1.8; }
 .table-score.four .row { grid-template-columns: 1.5fr repeat(4, 1fr); font-size: 0.9rem; }

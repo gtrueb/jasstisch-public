@@ -214,11 +214,7 @@ h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
   display: inline-flex; align-items: center; gap: 6px; background: var(--paper); border: 1px solid var(--line);
   border-radius: 999px; padding: 4px 10px; font-size: 0.85rem; font-weight: 600;
 }
-.trumpbadge svg { width: 16px; height: 16px; }
-.trumpbadge.suit-R svg, .trumpbadge.suit-R { color: var(--suit-R); }
-.trumpbadge.suit-S svg, .trumpbadge.suit-S { color: var(--suit-S); }
-.trumpbadge.suit-L svg, .trumpbadge.suit-L { color: var(--suit-L); }
-.trumpbadge.suit-E svg, .trumpbadge.suit-E { color: var(--suit-E); }
+.trumpbadge img.suit-img { width: 16px; height: 16px; }
 .target { color: var(--muted); font-size: 0.85rem; background: var(--paper); border-radius: 999px; padding: 4px 10px; border: 1px solid var(--line); }
 
 .felt-center {
@@ -247,7 +243,7 @@ h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
   appearance: none; border: 1px solid var(--line); background: var(--paper); border-radius: 12px; padding: 8px 10px;
   font: inherit; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-width: 118px; justify-content: center;
 }
-.suit-btn svg { width: 22px; height: 22px; }
+.suit-btn img.suit-img { width: 22px; height: 22px; }
 .suit-btn:hover { border-color: var(--ink); }
 .schieben { appearance: none; border: 0; background: var(--ink); color: #fff; border-radius: 12px; padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
 
@@ -266,9 +262,9 @@ h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
 }
 .card .center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
 .card .center b { font-size: 2rem; line-height: 1; font-weight: 700; }
-.card .center svg { width: 30px; height: 30px; }
+.card .center img.suit-img { width: 30px; height: 30px; }
 .card .corner { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: 0.8rem; font-weight: 700; line-height: 1; }
-.card .corner svg { width: 13px; height: 13px; }
+.card .corner img.suit-img { width: 13px; height: 13px; }
 .card .corner.tl { top: 6px; left: 6px; }
 .card .corner.br { bottom: 6px; right: 6px; transform: rotate(180deg); }
 .card.suit-R { color: var(--suit-R); }
@@ -277,7 +273,7 @@ h2 { font-size: 1.1rem; margin: 0 0 0.6rem; }
 .card.suit-E { color: var(--suit-E); }
 .card.small { --card-w: 58px; --card-h: 84px; }
 .card.small .center b { font-size: 1.3rem; }
-.card.small .center svg { width: 20px; height: 20px; }
+.card.small .center img.suit-img { width: 20px; height: 20px; }
 .card.back {
   background: repeating-linear-gradient(45deg, #24406f 0 6px, #2f5793 6px 12px);
   border: 3px solid #fffdf7;
@@ -325,11 +321,7 @@ button.card:disabled { cursor: default; }
 .history table { width: 100%; border-collapse: collapse; }
 .history th, .history td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
 .history th:first-child, .history td:first-child { text-align: left; }
-.history td svg { width: 16px; height: 16px; vertical-align: middle; }
-.history td span.suit-R svg { color: var(--suit-R); }
-.history td span.suit-S svg { color: var(--suit-S); }
-.history td span.suit-L svg { color: var(--suit-L); }
-.history td span.suit-E svg { color: var(--suit-E); }
+.history td img.suit-img { width: 16px; height: 16px; vertical-align: middle; }
 
 /* Tastatur-Fokus sichtbar machen */
 :focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }

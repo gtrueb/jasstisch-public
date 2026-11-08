@@ -450,3 +450,17 @@ button.card:disabled { cursor: default; }
 .topleft { display: flex; align-items: center; gap: 12px; }
 .reset-btn { appearance: none; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .reset-btn:hover { border-color: var(--ink); }
+
+/* Online-Lobby */
+.online-panel .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.online-panel .text { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font: inherit; background: var(--paper); }
+.online-panel .select { border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font: inherit; background: var(--paper); }
+.online-panel .select.small { font-size: 0.8rem; padding: 2px 6px; margin-left: 6px; }
+.online-panel .join-row { display: flex; gap: 8px; margin: 12px 0; }
+.online-panel .join-row .btn { white-space: nowrap; }
+.online-panel .lobby-code { font-size: 1.1rem; margin: 6px 0 10px; }
+.online-panel .lobby-code b { letter-spacing: 0.08em; font-size: 1.2rem; }
+.online-panel .seat-list { list-style: none; padding: 0; margin: 0 0 12px; }
+.online-panel .seat-list li { padding: 8px 0; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 4px; }
+.online-panel .seat-list .dot { width: 9px; height: 9px; border-radius: 50%; background: #c9c4b6; margin-right: 6px; }
+.online-panel .seat-list .dot.ok { background: #2f9e5b; }

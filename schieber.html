@@ -6,9 +6,9 @@
   <title>Schieber | Jasstisch</title>
   <meta name="description" content="Schieber online spielen: Jass gegen den Computer, direkt im Browser.">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/style.css?v=8">
+  <link rel="stylesheet" href="assets/style.css?v=9">
 </head>
-<body class="game-page">
+<body class="game-page" data-game="schieber">
   <header class="topbar">
     <div class="topleft">
       <button type="button" class="reset-btn" id="btn-reset" title="Spiel neu starten">&#8635; Neu</button>
@@ -112,12 +112,16 @@
     </div>
   </main>
 
-  <script src="js/clock.js?v=8"></script>
-  <script src="js/tempo.js?v=8"></script>
-  <script src="js/rules.js?v=8"></script>
-  <script src="js/ai-schieber.js?v=8"></script>
-  <script src="js/game.js?v=8"></script>
-  <script src="js/fx.js?v=8"></script>
-  <script src="js/ui.js?v=8"></script>
+  <script src="js/clock.js?v=9"></script>
+  <script src="js/tempo.js?v=9"></script>
+  <script src="js/rules.js?v=9"></script>
+  <script src="js/ai-schieber.js?v=9"></script>
+  <script src="js/game.js?v=9"></script>
+  <script src="js/fx.js?v=9"></script>
+  <script src="js/ui.js?v=9"></script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="js/view.js?v=10"></script>
+  <script src="js/online.js?v=10"></script>
+  <script src="js/lobby-ui.js?v=10"></script>
 </body>
 </html>

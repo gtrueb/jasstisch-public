@@ -41,6 +41,8 @@
   function Game(cfg) {
     cfg = cfg || {};
     this.cfg = {
+      aiLevel: cfg.aiLevel || 'normal',
+      aiLevels: cfg.aiLevels || {},
       players: cfg.players === 3 ? 3 : 4,
       end: cfg.end === 'rounds' ? 'rounds' : 'limit',
       limit: cfg.limit || LIMIT_DEFAULT,
@@ -228,7 +230,7 @@
     var seat = this.turnSeat();
     if (this.isHuman(seat)) return;   // Platz wurde inzwischen von einem Menschen übernommen
     if (this.trickNo === 0 && !this.weisDecided[seat]) this.announceWeis(seat);
-    var card = this.ai.choosePlay(this.hands[seat], this.plays, this.trump, seat);
+    var card = this.aiFor(seat).choosePlay(this.hands[seat], this.plays, this.trump, seat);
     this.playCard(seat, card);
   };
 
@@ -312,6 +314,30 @@
     if (this.phase !== 'roundEnd') return false;
     this.startRound();
     return true;
+  };
+
+  // KI für einen Platz (Stufe je Platz aus cfg.aiLevels, sonst die Standardstufe).
+  Game.prototype.aiFor = function (seat) {
+    var lvl = (this.cfg.aiLevels && this.cfg.aiLevels[seat]) || this.cfg.aiLevel || 'normal';
+    if (!this.ais) this.ais = {};
+    if (!this.ais[lvl]) this.ais[lvl] = AIM.createPlayer({ level: lvl });
+    return this.ais[lvl];
+  };
+
+  // Zug für einen Platz automatisch ausführen (bei Zeitüberschreitung eines Menschen).
+  Game.prototype.autoMove = function (seat) {
+    if (this.hold) return this.releaseHold();
+    if (this.phase === 'roundEnd') return this.nextRound();
+    if (this.phase === 'trump' && this.chooser === seat) {
+      var d = this.aiFor(seat).chooseTrump(this.hands[seat], { canSchieben: this.canSchieben });
+      if (d.action === 'schieben') return this.schiebenBy(seat);
+      return this.trumpBy(seat, d.suit);
+    }
+    if (this.phase === 'play' && this.turnSeat() === seat) {
+      var card = this.aiFor(seat).choosePlay(this.hands[seat], this.plays, this.trump, seat);
+      return this.playCard(seat, card);
+    }
+    return false;
   };
 
   Game.prototype.isHuman = function (seat) { return this.humanSeats.indexOf(seat) >= 0; };

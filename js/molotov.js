@@ -66,6 +66,7 @@
     this.dealer = Math.floor(this.rnd() * this.n);
     this.phase = 'idle';               // deal | play | roundEnd | gameEnd
     this.pending = false;
+    this.hold = false;             // Pause nach dem ersten Stich (Weis zeigen)
     this.gameWinners = [];
     this.lastScore = null;
     this.lastEvent = null;
@@ -76,6 +77,20 @@
 
   // Altes Spiel beenden (z. B. beim Reset): keine weiteren Timer mehr.
   Game.prototype.stop = function () { this.stopped = true; };
+
+  // Pause: Spiel hält an, bis "Weiter" gedrückt wird oder 5 Sekunden vorbei sind.
+  Game.prototype.holdWeis = function () {
+    var self = this;
+    this.hold = true;
+    this.sched(function () { if (self.hold) self.releaseHold(); }, 5000);
+  };
+
+  Game.prototype.releaseHold = function () {
+    if (!this.hold) return;
+    this.hold = false;
+    this.emit();
+    this.tick();
+  };
 
   Game.prototype.wait = function (ms, fn) {
     var self = this;
@@ -91,6 +106,7 @@
   };
 
   Game.prototype.startRound = function () {
+    this.hold = false;
     var n = this.n;
     this.roundNo++;
     if (this.roundNo > 1) this.dealer = (this.dealer + 1) % n;
@@ -124,7 +140,7 @@
   };
 
   Game.prototype.tick = function () {
-    if (this.pending) return;
+    if (this.pending || this.hold) return;
     if (this.phase === 'deal') {
       this.wait(this.delays.deal, function () { this.phase = 'play'; }.bind(this));
       return;
@@ -258,6 +274,8 @@
     this.lastEvent = null;
     if (this.trickNo === 1) this.weisRes = R.resolveWeisAnn(this.weisAnn);
     if (this.trickNo === this.per) this.endRound();
+    // Pause ganz am Ende: nach dem ersten Stich mit Weis
+    if (this.trickNo === 1 && this.weisRes) this.holdWeis();
   };
 
   Game.prototype.endRound = function () {
@@ -339,6 +357,7 @@
       humanBest: this.phase === 'play' && this.trickNo === 0 && !this.weisDecided[this.humanSeat] ? this.humanBestWeis() : null,
       humanWeisDone: this.weisDecided[this.humanSeat],
       humanWeisIds: this.humanWeisIds(),
+      weisHold: !!this.hold,
       roundTisch: this.tisch.slice(),
       roundStoeck: this.stoeck.slice(),
       tischEvents: this.tischEvents,

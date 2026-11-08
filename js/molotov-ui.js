@@ -66,6 +66,16 @@
 
   function posOf(st, seat) { return POS[st.n][seat]; }
 
+  // Weis-Karten während der Pause nach dem ersten Stich (am Platz des Gewinners)
+  function weisBlockHtml(w) {
+    var cards = (w.cards || []).map(function (c) {
+      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
+    }).join('');
+    return '<div class="seat-weis"><div class="sw-title">Weis von ' + esc(SEAT_NAMES[w.seat]) + ': ' + esc(w.label) + ' (' + w.pts + ')</div>' +
+      '<div class="weis-cards">' + cards + '</div>' +
+      '<button type="button" class="btn small" id="weis-weiter">Weiter</button></div>';
+  }
+
   function renderSeats(st) {
     var used = {};
     for (var seat = 0; seat < st.n; seat++) {
@@ -86,7 +96,10 @@
         backs += '</div>';
       }
       box.innerHTML = chip + backs;
+      if (st.weisHold && st.weisRes && st.weisRes.seat === seat) box.innerHTML += weisBlockHtml(st.weisRes);
     }
+    var wb = document.getElementById('weis-weiter');
+    if (wb) wb.addEventListener('click', function () { if (game) game.releaseHold(); });
     // Nicht benutzte Plätze ausblenden (bei 3 Spielern der obere Platz)
     ['seat-0', 'seat-1', 'seat-2', 'seat-3'].forEach(function (id) {
       if (!used[id]) { var e = $(id); e.hidden = true; e.innerHTML = ''; }

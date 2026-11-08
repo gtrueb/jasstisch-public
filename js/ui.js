@@ -50,6 +50,16 @@
 
   function teamName(t) { return t === 0 ? 'Du & Anna' : 'Max & Leo'; }
 
+  // Weis-Karten während der Pause nach dem ersten Stich (am Platz des Gewinners)
+  function weisBlockHtml(w) {
+    var cards = (w.cards || []).map(function (c) {
+      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
+    }).join('');
+    return '<div class="seat-weis"><div class="sw-title">Weis von ' + esc(SEAT_NAMES[w.seat]) + ': ' + esc(w.label) + ' (' + w.pts + ')</div>' +
+      '<div class="weis-cards">' + cards + '</div>' +
+      '<button type="button" class="btn small" id="weis-weiter">Weiter</button></div>';
+  }
+
   function renderSeats(st) {
     [0, 1, 2, 3].forEach(function (seat) {
       var box = $('seat-' + seat);
@@ -67,7 +77,10 @@
         hand += '</div>';
       }
       box.innerHTML = chip + hand;
+      if (st.weisHold && st.weisRes && st.weisRes.seat === seat) box.innerHTML += weisBlockHtml(st.weisRes);
     });
+    var wb = document.getElementById('weis-weiter');
+    if (wb) wb.addEventListener('click', function () { if (game) game.releaseHold(); });
   }
 
   // Sortierung: erst nach Farbe (Rosen, Schellen, Schilten, Eichel), dann nach Rang von klein nach gross.

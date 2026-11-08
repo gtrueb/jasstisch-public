@@ -7,6 +7,7 @@ const AI = AIS.createPlayer();
 const { Game } = require('../js/game.js');
 
 const c = (s, r) => ({ s, r, id: s + r });
+const ann = (seat, order, hand) => ({ seat, order, best: R.bestWeis(hand), total: R.weisTotal(hand) });
 const ids = (cards) => cards.map((x) => x.id).sort();
 
 test('deck has 36 cards and 152 card points', () => {
@@ -132,22 +133,21 @@ test('weis: best Weis ranking: Vierling > 5-Blatt > 4-Blatt > 2x3 > 3-Blatt', ()
 });
 
 test('weis: same class -> higher top card wins (7-8-9 beats 6-7-8)', () => {
-  const a = { seat: 0, order: 1, best: R.bestWeis([c('R', '7'), c('R', '8'), c('R', '9')]) };
-  const b = { seat: 1, order: 2, best: R.bestWeis([c('S', '6'), c('S', '7'), c('S', '8')]) };
+  const a = ann(0, 1, [c('R', '7'), c('R', '8'), c('R', '9')]);
+  const b = ann(1, 2, [c('S', '6'), c('S', '7'), c('S', '8')]);
   assert.equal(R.resolveWeisAnn([a, b]).seat, 0);
   assert.equal(R.resolveWeisAnn([b, a]).seat, 0);
 });
 
 test('weis: same cards -> first announcer wins', () => {
-  const best = R.bestWeis([c('R', '7'), c('R', '8'), c('R', '9')]);
-  const first = { seat: 2, order: 1, best };
-  const second = { seat: 3, order: 2, best: R.bestWeis([c('S', '7'), c('S', '8'), c('S', '9')]) };
+  const first = ann(2, 1, [c('R', '7'), c('R', '8'), c('R', '9')]);
+  const second = ann(3, 2, [c('S', '7'), c('S', '8'), c('S', '9')]);
   assert.equal(R.resolveWeisAnn([second, first]).seat, 2);
 });
 
 test('weis: higher class beats higher top card', () => {
-  const fourBlatt = { seat: 0, order: 2, best: R.bestWeis([c('R', '6'), c('R', '7'), c('R', '8'), c('R', '9')]) };
-  const threeBlatt = { seat: 1, order: 1, best: R.bestWeis([c('S', 'A'), c('S', 'K'), c('S', 'O')]) };
+  const fourBlatt = ann(0, 2, [c('R', '6'), c('R', '7'), c('R', '8'), c('R', '9')]);
+  const threeBlatt = ann(1, 1, [c('S', 'A'), c('S', 'K'), c('S', 'O')]);
   assert.equal(R.resolveWeisAnn([threeBlatt, fourBlatt]).seat, 0);
 });
 
@@ -246,7 +246,7 @@ test('human play rejects illegal cards and accepts legal ones', () => {
   assert.equal(g2.humanPlay('EA'), true);           // Eichel bedienen ist erlaubt
 });
 
-test('own announced Weis cards are returned for highlighting', () => {
+test('Weis cards are marked only until the Weis is confirmed', () => {
   const { Game } = require('../js/game.js');
   const g = new Game({ rnd: () => 0.5, sched: () => {}, delays: {} });
   g.phase = 'play';
@@ -258,6 +258,16 @@ test('own announced Weis cards are returned for highlighting', () => {
   g.hands = [[c('R', '7'), c('R', '8'), c('R', '9'), c('S', 'A')], [], [], []];
   g.leader = 0;
   g.plays = [];
+  assert.deepEqual(g.humanWeisIds().sort(), ['R7', 'R8', 'R9']);   // am Zug: markiert
   assert.equal(g.announceWeis(0), true);
-  assert.deepEqual(g.humanWeisIds().sort(), ['R7', 'R8', 'R9']);
+  assert.deepEqual(g.humanWeisIds(), []);                           // bestätigt: nicht mehr markiert
+});
+
+test('Weis points: 3-Blatt + 4-Blatt together give 70, winner chosen by best Weis', () => {
+  const hand = [c('R', 'K'), c('R', 'O'), c('R', 'U'), c('R', '10'), c('S', 'A'), c('S', 'K'), c('S', 'O')];
+  const best = R.bestWeis(hand);
+  const total = R.weisTotal(hand);
+  assert.equal(best.label, '4-Blatt');        // für die Gewinnerwahl zählt das 4-Blatt
+  assert.equal(total.pts, 70);                // für die Punkte zählen beide
+  assert.equal(total.cards.length, 7);
 });

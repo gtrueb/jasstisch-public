@@ -150,6 +150,68 @@ def weis_best(hand):
     return best[0]
 
 
+def _run_pieces(L):
+    """Zerlegt einen Lauf der Länge L in Folgen von 3 bis 5 mit der höchsten Punktzahl."""
+    dp = [0] * (L + 1)
+    frm = [None] * (L + 1)
+    for p in range(1, L + 1):
+        dp[p] = dp[p - 1]
+        for n in (3, 4, 5):
+            if n <= p and dp[p - n] + SEQ_PTS[n] > dp[p]:
+                dp[p] = dp[p - n] + SEQ_PTS[n]
+                frm[p] = n
+        if frm[p] is not None and dp[p] == dp[p - 1]:
+            frm[p] = None
+    pieces = []
+    p = L
+    while p > 0:
+        if frm[p] is None:
+            p -= 1
+        else:
+            n = frm[p]
+            pieces.append((p - n, n))
+            p -= n
+    return pieces
+
+
+def _seq_cards(cards):
+    """Beste Folgen aus einer Kartenliste: (Punkte, Karten)."""
+    pts, out = 0, []
+    for s in range(4):
+        idx = {rank(c): c for c in cards if suit(c) == s}
+        ranks = sorted(idx)
+        i = 0
+        while i < len(ranks):
+            j = i
+            while j + 1 < len(ranks) and ranks[j + 1] == ranks[j] + 1:
+                j += 1
+            start, L = ranks[i], j - i + 1
+            for off, n in _run_pieces(L):
+                pts += SEQ_PTS[n]
+                out += [idx[start + off + k] for k in range(n)]
+            i = j + 1
+    return pts, out
+
+
+def weis_total(hand):
+    """Alle Weisen eines Spielers zusammen (Summe der Punkte, keine Karte doppelt).
+    Gibt (punkte, karten) zurück oder None, wenn kein Weis."""
+    fours = [r for r in range(3, 9) if sum(1 for c in hand if rank(c) == r) == 4]
+    best = (0, [])
+    for mask in range(1 << len(fours)):
+        pts, cards, removed = 0, [], set()
+        for k, r in enumerate(fours):
+            if mask >> k & 1:
+                cs = [c for c in hand if rank(c) == r]
+                removed.update(cs)
+                cards += cs
+                pts += _fours_pts(r)
+        sp, sc = _seq_cards([c for c in hand if c not in removed])
+        if pts + sp > best[0]:
+            best = (pts + sp, cards + sc)
+    return best if best[0] > 0 else None
+
+
 def tisch_pts(cards):
     """Tischweis: Weis, den die vier Karten eines Stichs bilden (Dreiblatt 20, Vierblatt 50, Vierling)."""
     ranks = [rank(c) for c in cards]
@@ -230,14 +292,15 @@ def round_gen(gtype, styles, rng, dealer, scores, n=4):
             if trick_no == 0 and not weis_done[seat]:
                 weis_done[seat] = True
                 best = weis_best(hands[seat])
+                total = weis_total(hands[seat]) if best is not None else None
                 if best is not None:
                     a = yield {'kind': DEC_WEIS, 'seat': seat, 'hand': hands[seat], 'plays': plays,
                                'trump': trump, 'opts': [OUT_SKIP, OUT_ANNOUNCE], 'style': styles[seat],
-                               'stoeck': stoeck, 'seen': seen, 'won': won, 'weis_pts': best[1],
+                               'stoeck': stoeck, 'seen': seen, 'won': won, 'weis_pts': total[0],
                                'trick_no': trick_no, 'own_weis': False}
                     if a == OUT_ANNOUNCE:
                         order[0] += 1
-                        weis_ann.append((seat, best, order[0]))
+                        weis_ann.append((seat, best, order[0], total))
             if gtype == 'schieber':
                 legal = legal_schieber(hands[seat], plays, trump)
             else:
@@ -277,12 +340,12 @@ def round_gen(gtype, styles, rng, dealer, scores, n=4):
     weis_res = None
     if weis_ann:
         win = None
-        for seat, best, od in weis_ann:
+        for seat, best, od, total in weis_ann:
             if win is None or _weis_better(best, win[1]):
-                win = (seat, best, od)
+                win = (seat, best, od, total)
             elif not _weis_better(win[1], best) and od < win[2]:
-                win = (seat, best, od)
-        weis_res = (win[0], win[1][1])
+                win = (seat, best, od, total)
+        weis_res = (win[0], win[3][0])   # Punkte = Summe aller Weisen des Gewinners
 
     if gtype == 'schieber':
         cp = [0, 0]

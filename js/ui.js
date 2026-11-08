@@ -19,7 +19,7 @@
     E: '<img class="suit-img" src="assets/suits/E.svg" alt="">'
   };
 
-  var COURT = { U: true, O: true, K: true }; // Hofkarten: eigene Bilder aus assets/cards/
+  var FACE_CODE = { '6': '6', '7': '7', '8': '8', '9': '9', '10': 'B', 'U': 'U', 'O': 'O', 'K': 'K', 'A': 'A' };
   var $ = function (id) { return document.getElementById(id); };
   var game = null;
   var lastSettings = null;
@@ -42,10 +42,8 @@
     var label = (RANK_LONG[card.r] || card.r) + ' ' + SUIT_LABEL[card.s];
     el.title = label;
     el.setAttribute('aria-label', label);
-    el.innerHTML =
-      '<span class="corner tl"><b>' + esc(card.r) + '</b><i>' + ICON[card.s] + '</i></span>' +
-      (COURT[card.r] ? '<span class="center court"><img src="assets/cards/' + card.s + card.r + '.svg" alt=""></span>' : '<span class="center"><b>' + esc(card.r) + '</b>' + ICON[card.s] + '</span>') +
-      '<span class="corner br"><b>' + esc(card.r) + '</b><i>' + ICON[card.s] + '</i></span>';
+    // Karte als fertiges Bild (assets/cards/<Farbe><Rang>.svg). Zehn heisst "B" (Banner).
+    el.innerHTML = '<img class="face" src="assets/cards/' + card.s + FACE_CODE[card.r] + '.svg" alt="">';
     if (opts.disabled) el.disabled = true;
     return el;
   }
@@ -101,15 +99,47 @@
     box.classList.toggle('turn', canPlay);
   }
 
+  // Stich-Karten. Gewinnt ein Spieler den Stich, fliegen die Karten zu ihm.
   function renderTrick(st) {
     var box = $('trick');
-    box.innerHTML = '';
+    var prev = Array.prototype.filter.call(box.children, function (c) { return !c.classList.contains('flying'); });
+    var trickChanged = box.dataset.trick !== undefined && +box.dataset.trick !== st.trickNo;
+    Array.prototype.forEach.call(box.children, function (c) {
+      if (!c.classList.contains('flying')) box.removeChild(c);
+    });
+    if (trickChanged && st.plays.length === 0 && prev.length) {
+      window.JassFX.fly(box, prev, SEAT_POS[st.leader]);
+    }
+    box.dataset.trick = st.trickNo;
     st.plays.forEach(function (p, idx) {
       var slot = document.createElement('div');
       slot.className = 'play play-' + SEAT_POS[p.seat] + (idx === st.plays.length - 1 ? ' fresh' : '');
       slot.appendChild(cardNode(p.card, { small: true, static: true }));
       box.appendChild(slot);
     });
+  }
+
+  // Meldungen: Weis, Stöck, Trumpf (jede nur einmal)
+  var seen = null;
+  function checkToasts(st) {
+    var FX = window.JassFX;
+    if (!seen || seen.round !== st.history.length) {
+      seen = { round: st.history.length, weis: 0, stoeck: '', trump: '' };
+    }
+    if (st.weisAnn.length < seen.weis) seen.weis = 0;
+    st.weisAnn.slice(seen.weis).forEach(function (a) {
+      FX.toast(SEAT_NAMES[a.seat] + ' sagt Weis an: ' + a.label + ' (' + a.pts + ')', 'weis');
+    });
+    seen.weis = st.weisAnn.length;
+    var ev = st.lastEvent;
+    if (ev && ev.type === 'stoeck') {
+      var key = ev.seat + '-' + st.trickNo + '-' + st.plays.length;
+      if (key !== seen.stoeck) { seen.stoeck = key; FX.toast('Stöck: +' + R.STOECK_PTS + ' für ' + teamName(ev.seat % 2), 'stoeck'); }
+    }
+    if (ev && ev.type === 'trump') {
+      var tkey = st.history.length + '-' + ev.suit;
+      if (tkey !== seen.trump) { seen.trump = tkey; FX.toast((ev.seat === 0 ? 'Du wählst' : SEAT_NAMES[ev.seat] + ' wählt') + ' Trumpf: ' + SUIT_LABEL[ev.suit], 'trump'); }
+    }
   }
 
   function trumpLabel(s) { return s ? SUIT_LABEL[s] : '–'; }
@@ -273,6 +303,7 @@
     renderCenter(st, settings);
     renderScore(st);
     renderModal(st);
+    checkToasts(st);
   }
 
   function readSettings() {

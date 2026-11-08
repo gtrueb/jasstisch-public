@@ -1,13 +1,14 @@
 /*
  * Molotov: jeder für sich, kein Team. Wenigste Striche gewinnen.
+ * Spielerzahl: 4 (je 9 Karten, 9 Stiche) oder 3 (je 12 Karten, 12 Stiche).
  *
- * Regeln:
+ * Regeln (jassverzeichnis.ch und Angaben des Nutzers):
  * - Jede Runde beginnt in Obenabe (kein Trumpf). Wer zuerst die Farbe nicht bedienen kann,
  *   legt eine Karte einer anderen Farbe. Diese Farbe ist ab jetzt Trumpf.
  * - Farbe bedienen ist Pflicht. Ohne Farbe darf man jede Karte spielen (Untertrumpfen erlaubt).
- * - Weisen (Handkarten): nur im ersten Stich, nur auf dem eigenen Zug. Nur die stärkste Weisen-
+ * - Weisen (Hand): nur im ersten Stich, nur auf dem eigenen Zug. Nur die stärkste Weisen-
  *   Kombination aller Spieler zählt. Ihr Besitzer bekommt die Punkte als Minus.
- * - Tischweis: bilden die vier Karten eines Stichs einen Weis, bekommt der Stichgewinner die Punkte (Plus).
+ * - Tischweis: bilden die Karten eines Stichs einen Weis, bekommt der Stichgewinner die Punkte (Plus).
  * - Stöck (König + Ober des Trumpfs, beide noch auf der Hand nach der Trumpfwahl): -20 für den Besitzer.
  * - Letzter Stich: +5.
  * - Striche = Punkte auf 10 gerundet, dann durch 10 geteilt (72 -> 7, 35 -> 4).
@@ -31,9 +32,16 @@
     return sign * Math.round(Math.abs(points) / 10);
   }
 
+  function zeros(n) {
+    var a = [];
+    for (var i = 0; i < n; i++) a.push(0);
+    return a;
+  }
+
   function Game(cfg) {
     cfg = cfg || {};
     this.cfg = {
+      players: cfg.players === 3 ? 3 : 4,
       end: cfg.end === 'rounds' ? 'rounds' : 'limit',
       limit: cfg.limit || LIMIT_DEFAULT,
       rounds: cfg.rounds || ROUNDS_DEFAULT,
@@ -41,21 +49,23 @@
       stoeck: cfg.stoeck !== false,
       lastTrick: cfg.lastTrick !== false
     };
+    this.n = this.cfg.players;
     this.delays = Object.assign({}, DEFAULT_DELAYS, cfg.delays || {});
     this.sched = cfg.sched || function (fn, ms) { return setTimeout(fn, ms); };
     this.rnd = cfg.rnd || Math.random;
     this.onUpdate = cfg.onUpdate || function () {};
     this.ai = AIM.createPlayer({ level: cfg.aiLevel || 'normal' });
     this.humanSeat = 0;
-    this.totals = [0, 0, 0, 0];   // Striche je Spieler
+    this.totals = zeros(this.n);       // Striche je Spieler
     this.history = [];
     this.roundNo = 0;
-    this.dealer = Math.floor(this.rnd() * 4);
-    this.phase = 'idle';          // deal | play | roundEnd | gameEnd
+    this.dealer = Math.floor(this.rnd() * this.n);
+    this.phase = 'idle';               // deal | play | roundEnd | gameEnd
     this.pending = false;
     this.gameWinners = [];
     this.lastScore = null;
     this.lastEvent = null;
+    this.tischEvents = [];             // [{seat, pts, trick}] je Stich mit Tischweis
   }
 
   Game.prototype.emit = function () { this.onUpdate(this); };
@@ -73,27 +83,33 @@
   };
 
   Game.prototype.startRound = function () {
+    var n = this.n;
     this.roundNo++;
-    if (this.roundNo > 1) this.dealer = (this.dealer + 1) % 4;
-    this.leader = (this.dealer + 1) % 4;   // Vorhand spielt aus
+    if (this.roundNo > 1) this.dealer = (this.dealer + 1) % n;
+    this.leader = (this.dealer + 1) % n;   // Vorhand spielt aus
+    this.per = 36 / n;                     // Karten je Spieler (9 oder 12)
     var deck = R.shuffle(R.makeDeck(), this.rnd);
-    this.hands = [0, 1, 2, 3].map(function (s) { return deck.slice(s * 9, s * 9 + 9); });
+    this.hands = [];
+    for (var s = 0; s < n; s++) this.hands.push(deck.slice(s * this.per, (s + 1) * this.per));
     this.trump = null;                     // null = Obenabe
     this.trumpSetBy = -1;
     this.plays = [];
-    this.wonTricks = [[], [], [], []];
-    this.trickWins = [0, 0, 0, 0];
+    this.wonTricks = [];
+    for (s = 0; s < n; s++) this.wonTricks.push([]);
+    this.trickWins = zeros(n);
     this.lastWinner = -1;
-    this.tisch = [0, 0, 0, 0];             // Tischweis-Punkte je Spieler (Plus)
-    this.stoeck = [0, 0, 0, 0];            // Stöck je Spieler (Minus)
-    this.stoeckPair = [false, false, false, false];
-    this.playedKO = [[], [], [], []];
+    this.tisch = zeros(n);
+    this.stoeck = zeros(n);
+    this.stoeckPair = zeros(n).map(function () { return false; });
+    this.playedKO = [];
+    for (s = 0; s < n; s++) this.playedKO.push([]);
     this.trickNo = 0;
     this.lastEvent = null;
-    this.weisDecided = [false, false, false, false];
+    this.weisDecided = zeros(n).map(function () { return false; });
     this.weisAnn = [];
     this.annCounter = 0;
     this.weisRes = null;                   // stärkste Weisen-Kombination (Minus für den Besitzer)
+    this.tischEvents = [];
     this.phase = 'deal';
     this.emit();
     this.tick();
@@ -107,7 +123,7 @@
     }
     if (this.phase !== 'play') return;
 
-    if (this.plays.length === 4) {
+    if (this.plays.length === this.n) {
       this.wait(this.delays.trickShow, this.finishTrick.bind(this));
       return;
     }
@@ -120,8 +136,8 @@
 
   // Sitz, der als Nächstes spielt. null, solange der Stich fertig angezeigt wird.
   Game.prototype.turnSeat = function () {
-    if (this.plays.length >= 4) return null;
-    return (this.leader + this.plays.length) % 4;
+    if (this.plays.length >= this.n) return null;
+    return (this.leader + this.plays.length) % this.n;
   };
 
   // Weis ansagen: nur im ersten Stich, nur auf dem eigenen Zug, nur einmal.
@@ -135,12 +151,6 @@
     return !!best;
   };
 
-  // Ids der Karten des eigenen angesagten Weis (zum Hervorheben), sonst [].
-  Game.prototype.humanWeisIds = function () {
-    var a = this.weisAnn.filter(function (x) { return x.seat === this.humanSeat; }.bind(this))[0];
-    return a ? a.best.cards.map(function (c) { return c.id; }) : [];
-  };
-
   Game.prototype.humanAnnounce = function () {
     var ok = this.announceWeis(this.humanSeat);
     this.emit();
@@ -149,6 +159,13 @@
 
   Game.prototype.humanBestWeis = function () {
     return R.bestWeis(this.hands[this.humanSeat] || []);
+  };
+
+  // Ids der Karten des eigenen angesagten Weis (zum Hervorheben), sonst [].
+  Game.prototype.humanWeisIds = function () {
+    var self = this;
+    var a = this.weisAnn.filter(function (x) { return x.seat === self.humanSeat; })[0];
+    return a ? a.best.cards.map(function (c) { return c.id; }) : [];
   };
 
   Game.prototype.playCard = function (seat, card) {
@@ -168,7 +185,7 @@
     this.hands[seat] = this.hands[seat].filter(function (c) { return c.id !== card.id; });
     this.plays.push({ seat: seat, card: card });
 
-    if (this.cfg.stoeck && this.trump && card.s === this.trump && (card.r === 'K' || card.r === 'O')) {
+    if (this.cfg.stoeck && this.trump !== null && card.s === this.trump && (card.r === 'K' || card.r === 'O')) {
       this.playedKO[seat].push(card.r);
       if (this.stoeckPair[seat] && this.playedKO[seat].length === 2) {
         this.stoeck[seat] += STOECK;
@@ -181,6 +198,7 @@
   };
 
   Game.prototype.setTrump = function (suit, seat) {
+    var self = this;
     this.trump = suit;
     this.trumpSetBy = seat;
     // Stöck gilt nur, wenn beide Karten nach der Trumpfwahl noch auf der Hand sind.
@@ -190,6 +208,7 @@
       return k && o;
     });
     this.lastEvent = { type: 'trump', suit: suit, seat: seat };
+    void self;
   };
 
   Game.prototype.aiPlay = function () {
@@ -207,7 +226,7 @@
   };
 
   Game.prototype.humanLegal = function () {
-    if (this.phase !== 'play' || this.turnSeat() !== this.humanSeat || this.plays.length === 4) return [];
+    if (this.phase !== 'play' || this.turnSeat() !== this.humanSeat) return [];
     return R.legalFree(this.hands[this.humanSeat], this.plays).map(function (c) { return c.id; });
   };
 
@@ -217,34 +236,38 @@
     var winner = this.plays[w].seat;
     this.wonTricks[winner].push(cards);
     this.trickWins[winner]++;
-    this.tisch[winner] += R.tischWeis(cards);
+    var tp = R.tischWeis(cards);
+    if (tp > 0) {
+      this.tisch[winner] += tp;
+      this.tischEvents.push({ seat: winner, pts: tp, trick: this.trickNo + 1 });
+    }
     this.plays = [];
     this.trickNo++;
     this.lastWinner = winner;
     this.leader = winner;
     this.lastEvent = null;
     if (this.trickNo === 1) this.weisRes = R.resolveWeisAnn(this.weisAnn);
-    if (this.trickNo === 9) this.endRound();
+    if (this.trickNo === this.per) this.endRound();
   };
 
   Game.prototype.endRound = function () {
-    var self = this;
+    var self = this, n = this.n;
     var trump = this.trump;
-    var card = [0, 0, 0, 0], bonus = [0, 0, 0, 0], weis = [0, 0, 0, 0];
+    var card = zeros(n), bonus = zeros(n), weis = zeros(n);
     this.wonTricks.forEach(function (tricks, s) {
       tricks.forEach(function (cards) { card[s] += R.trickPoints(cards, trump); });
     });
     if (this.cfg.lastTrick) bonus[this.lastWinner] += LAST_TRICK;
     if (this.weisRes) weis[this.weisRes.seat] = this.weisRes.pts;
 
-    var raw = [0, 0, 0, 0], t = [0, 0, 0, 0], s;
-    for (s = 0; s < 4; s++) {
+    var raw = zeros(n), t = zeros(n), s;
+    for (s = 0; s < n; s++) {
       raw[s] = card[s] + bonus[s] + this.tisch[s] - weis[s] - this.stoeck[s];
       t[s] = tallies(raw[s]);
       this.totals[s] += t[s];
     }
     this.lastScore = {
-      round: this.roundNo, trump: trump,
+      round: this.roundNo, trump: trump, n: n,
       card: card, bonus: bonus, tisch: this.tisch.slice(), weis: weis.map(function (x) { return -x; }),
       stoeck: this.stoeck.map(function (x) { return -x; }),
       raw: raw, tallies: t
@@ -276,6 +299,7 @@
   Game.prototype.stateForUI = function () {
     return {
       phase: this.phase,
+      n: this.n,
       trump: this.trump,
       trumpSetBy: this.trumpSetBy,
       trickNo: this.trickNo,
@@ -291,6 +315,7 @@
       humanBest: this.phase === 'play' && this.trickNo === 0 && !this.weisDecided[this.humanSeat] ? this.humanBestWeis() : null,
       humanWeisDone: this.weisDecided[this.humanSeat],
       humanWeisIds: this.humanWeisIds(),
+      tischEvents: this.tischEvents,
       lastEvent: this.lastEvent,
       lastScore: this.lastScore,
       history: this.history,

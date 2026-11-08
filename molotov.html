@@ -6,7 +6,7 @@
   <title>Molotov | Jasstisch</title>
   <meta name="description" content="Molotov online spielen: jeder für sich, wenigste Striche gewinnen. Gegen den Computer, direkt im Browser.">
   <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/style.css?v=9">
+  <link rel="stylesheet" href="assets/style.css?v=16">
 </head>
 <body class="game-page" data-game="molotov">
   <header class="topbar">
@@ -30,14 +30,14 @@
     <h1>Molotov</h1>
     <p class="lead">Jeder für sich. Wenigste Striche gewinnen. Der Trumpf wird gespielt: Wer die Farbe nicht bedienen kann, legt eine andere Farbe, und diese wird Trumpf.</p>
 
-    <div class="mode-grid">
-      <button type="button" class="mode on" aria-pressed="true">
+    <div class="mode-grid" role="group" aria-label="Spielmodus">
+      <button type="button" class="mode on" id="mode-online" data-mode="online" aria-pressed="true">
+        <strong>Online spielen</strong>
+        <span>Lobby erstellen oder Code eingeben</span>
+      </button>
+      <button type="button" class="mode" id="mode-local" data-mode="local" aria-pressed="false">
         <strong>Gegen Computer</strong>
         <span>Gegen KI-Gegner üben</span>
-      </button>
-      <button type="button" class="mode" disabled>
-        <strong>Online spielen</strong>
-        <span>Demnächst verfügbar</span>
       </button>
     </div>
 
@@ -46,8 +46,8 @@
       <div class="field">
         <span class="label">Anzahl</span>
         <div class="seg">
-          <label><input type="radio" name="players" value="4" checked><span>4 Spieler</span></label>
-          <label><input type="radio" name="players" value="3"><span>3 Spieler</span></label>
+          <label><input type="radio" name="players" value="3" checked><span>3 Spieler</span></label>
+          <label><input type="radio" name="players" value="4"><span>4 Spieler</span></label>
         </div>
       </div>
       <p class="small muted">Bei 4 Spielern hat jeder 9 Karten. Bei 3 Spielern hat jeder 12 Karten, also alle 36 Karten.</p>
@@ -104,7 +104,8 @@
         <div class="hand" id="hand"></div>
       </section>
 
-      <aside class="side" aria-label="Punktestand">
+      <aside class="side" aria-label="Jasstafel">
+        <section class="jasstafel">
         <div class="score">
           <div class="team-score p0" id="score-0"></div>
           <div class="team-score p1" id="score-1"></div>
@@ -121,6 +122,7 @@
         <div id="tab-history" class="history" hidden>
           <div id="history"></div>
         </div>
+        </section>
         <button type="button" class="btn ghost small" id="btn-leave">Spiel verlassen</button>
       </aside>
     </div>
@@ -136,12 +138,12 @@
   <script src="js/ai-molotov.js?v=11"></script>
   <script src="js/molotov.js?v=13"></script>
   <script src="js/fx.js?v=9"></script>
-  <script src="js/molotov-ui.js?v=11"></script>
+  <script src="js/molotov-ui.js?v=14"></script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="js/mental.js?v=11"></script>
   <script src="js/mental-round.js?v=13"></script>
   <script src="js/view.js?v=11"></script>
-  <script src="js/online.js?v=13"></script>
-  <script src="js/lobby-ui.js?v=11"></script>
+  <script src="js/online.js?v=14"></script>
+  <script src="js/lobby-ui.js?v=15"></script>
 </body>
 </html>

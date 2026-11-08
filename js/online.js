@@ -205,13 +205,17 @@
   function hostSetLevel(i, level) {
     if (S.seats[i] && S.seats[i].kind !== 'human') { S.seats[i].level = level; pushLobby(); }
   }
+  // Spielerzahl ändern (nur Host, nur Molotow, nur vor dem Start). Gibt false zurück, wenn abgelehnt.
   function hostSetPlayers(n) {
-    if (S.started || S.gtype !== 'molotov') return;
-    for (var i = n; i < S.seats.length; i++) if (S.seats[i].kind === 'human') return;
+    if (S.role !== 'host' || S.started || S.gtype !== 'molotov') return false;
+    for (var i = n; i < S.seats.length; i++) {
+      if (S.seats[i].kind === 'human') { status('Platz ' + (i + 1) + ' ist besetzt.'); return false; }
+    }
     S.players = n;
     S.seats = S.seats.slice(0, n);
     while (S.seats.length < n) S.seats.push({ kind: 'open', level: 'mittel', connected: false });
     pushLobby();
+    return true;
   }
 
   // ---------- Host: Spiel starten ----------

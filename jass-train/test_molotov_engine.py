@@ -66,7 +66,7 @@ def test_round_tallies_match_plus_minus():
     for seed in range(200):
         tall, info = play_round(seed)
         for s in range(4):
-            assert tall[s] == E._tallies(info['plus'][s]) - E._tallies(info['minus'][s])
+            assert tall[s] == info['plus'][s] - info['minus'][s]
 
 
 if __name__ == '__main__':

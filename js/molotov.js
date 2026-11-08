@@ -19,7 +19,7 @@
 })(typeof window !== 'undefined' ? window : this, function (R, AIM) {
   'use strict';
 
-  var DEFAULT_DELAYS = { deal: 1800, aiMin: 2300, aiMax: 3200, trickShow: 2000 };
+  var DEFAULT_DELAYS = { deal: 1800, aiMin: 2000, aiMax: 2900, trickShow: 4000 };
   var LIMIT_DEFAULT = 50;
   var ROUNDS_DEFAULT = 8;
   var STOECK = 20;

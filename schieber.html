@@ -11,6 +11,11 @@
 <body class="game-page">
   <header class="topbar">
     <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Jasstisch</a>
+    <div class="tempo" role="group" aria-label="Tempo">
+      <button type="button" data-speed="langsam">Langsam</button>
+      <button type="button" data-speed="normal" class="on" aria-pressed="true">Normal</button>
+      <button type="button" data-speed="schnell">Schnell</button>
+    </div>
     <nav>
       <a href="index.html">Spielen</a>
       <a href="rules.html">Regeln</a>
@@ -103,6 +108,7 @@
     </div>
   </main>
 
+  <script src="js/tempo.js"></script>
   <script src="js/rules.js"></script>
   <script src="js/ai-schieber.js"></script>
   <script src="js/game.js"></script>

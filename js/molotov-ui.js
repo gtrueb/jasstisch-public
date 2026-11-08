@@ -284,9 +284,7 @@
     $('setup').hidden = true;
     $('table').hidden = false;
     $('modal').hidden = true;
-    var speed = parseFloat(new URLSearchParams(window.location.search).get('speed')) || 1;
-    var delays = {};
-    Object.keys(M.DEFAULT_DELAYS).forEach(function (k) { delays[k] = Math.round(M.DEFAULT_DELAYS[k] / speed); });
+    var delays = window.JassTempo.scaled(M.DEFAULT_DELAYS);
     game = new M.Game({
       delays: delays,
       end: settings.end,
@@ -329,6 +327,11 @@
     if (new URLSearchParams(window.location.search).get('autostart') === '1') startGame(readSettings());
   }
 
+  window.addEventListener('jass-tempo', function () {
+    if (!game) return;
+    var d = window.JassTempo.scaled(M.DEFAULT_DELAYS);
+    Object.keys(d).forEach(function (k) { game.delays[k] = d[k]; });
+  });
   document.addEventListener('DOMContentLoaded', init);
   window.JassMolotovUI = { startGame: startGame, showSetup: showSetup };
 })();

@@ -135,6 +135,12 @@
     return !!best;
   };
 
+  // Ids der Karten des eigenen angesagten Weis (zum Hervorheben), sonst [].
+  Game.prototype.humanWeisIds = function () {
+    var a = this.weisAnn.filter(function (x) { return x.seat === this.humanSeat; }.bind(this))[0];
+    return a ? a.best.cards.map(function (c) { return c.id; }) : [];
+  };
+
   Game.prototype.humanAnnounce = function () {
     var ok = this.announceWeis(this.humanSeat);
     this.emit();
@@ -284,6 +290,7 @@
       weisRes: this.weisRes ? { seat: this.weisRes.seat, label: this.weisRes.label, pts: this.weisRes.pts } : null,
       humanBest: this.phase === 'play' && this.trickNo === 0 && !this.weisDecided[this.humanSeat] ? this.humanBestWeis() : null,
       humanWeisDone: this.weisDecided[this.humanSeat],
+      humanWeisIds: this.humanWeisIds(),
       lastEvent: this.lastEvent,
       lastScore: this.lastScore,
       history: this.history,

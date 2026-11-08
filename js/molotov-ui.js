@@ -68,16 +68,27 @@
     });
   }
 
+  // Sortierung: erst nach Farbe (Rosen, Schellen, Schilten, Eichel), dann nach Rang von klein nach gross.
+  var SUIT_ORDER = { R: 0, S: 1, L: 2, E: 3 };
+  function sortHand(hand) {
+    return hand.slice().sort(function (a, b) {
+      if (SUIT_ORDER[a.s] !== SUIT_ORDER[b.s]) return SUIT_ORDER[a.s] - SUIT_ORDER[b.s];
+      return R.ORDER_PLAIN[a.r] - R.ORDER_PLAIN[b.r];
+    });
+  }
+
   function renderHand(st) {
     var box = $('hand');
     box.innerHTML = '';
     var legal = st.legal || [];
     var canPlay = st.phase === 'play' && st.turnSeat === 0;
     var dealing = st.phase === 'deal';
-    (st.hands[0] || []).forEach(function (card, idx) {
+    var weisIds = st.humanWeisIds || [];
+    sortHand(st.hands[0] || []).forEach(function (card, idx) {
       var ok = canPlay && legal.indexOf(card.id) >= 0;
       var el = cardNode(card, { dim: canPlay && !ok, disabled: !ok });
       el.style.setProperty('--i', idx);
+      if (weisIds.indexOf(card.id) >= 0) el.classList.add('weis-card');
       if (dealing) el.classList.add('dealt');
       if (ok) el.addEventListener('click', function () { game.humanPlay(card.id); });
       box.appendChild(el);

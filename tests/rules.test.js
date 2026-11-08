@@ -245,3 +245,19 @@ test('human play rejects illegal cards and accepts legal ones', () => {
   assert.equal(g2.humanPlay('S7'), false);          // Farbzwang verletzt
   assert.equal(g2.humanPlay('EA'), true);           // Eichel bedienen ist erlaubt
 });
+
+test('own announced Weis cards are returned for highlighting', () => {
+  const { Game } = require('../js/game.js');
+  const g = new Game({ rnd: () => 0.5, sched: () => {}, delays: {} });
+  g.phase = 'play';
+  g.trump = 'R';
+  g.trickNo = 0;
+  g.weisDecided = [false, false, false, false];
+  g.weisAnn = [];
+  g.annCounter = 0;
+  g.hands = [[c('R', '7'), c('R', '8'), c('R', '9'), c('S', 'A')], [], [], []];
+  g.leader = 0;
+  g.plays = [];
+  assert.equal(g.announceWeis(0), true);
+  assert.deepEqual(g.humanWeisIds().sort(), ['R7', 'R8', 'R9']);
+});

@@ -10,7 +10,7 @@
   var AIS = (typeof module === 'object' && module.exports) ? require('./ai-schieber.js') : root.JassAISchieber;
 
   // Zeiten in Millisekunden. Auf jassli.ch gemessen: ca. 10-12 s pro Stich, KI-Karte ca. 2.5-3 s.
-  var DEFAULT_DELAYS = { deal: 1800, aiMin: 2300, aiMax: 3200, trickShow: 2000, trump: 3500 };
+  var DEFAULT_DELAYS = { deal: 1800, aiMin: 2000, aiMax: 2900, trickShow: 4000, trump: 3500 };
 
   function Game(cfg) {
     cfg = cfg || {};

@@ -42,11 +42,15 @@
 
   Game.prototype.emit = function () { this.onUpdate(this); };
 
+  // Altes Spiel beenden (z. B. beim Reset): keine weiteren Timer mehr.
+  Game.prototype.stop = function () { this.stopped = true; };
+
   Game.prototype.wait = function (ms, fn) {
     var self = this;
-    if (this.pending) return;
+    if (this.pending || this.stopped) return;
     this.pending = true;
     this.sched(function () {
+      if (self.stopped) return;
       self.pending = false;
       if (fn) fn();
       self.emit();
@@ -273,6 +277,10 @@
     this.totals[0] += sc.total[0];
     this.totals[1] += sc.total[1];
     this.history.push({ round: this.roundNo, dealer: this.dealer, trump: this.trump, score: sc, totals: this.totals.slice() });
+    sc.weisSeat = this.weisRes ? this.weisRes.seat : -1;
+    sc.weisLabel = this.weisRes ? this.weisRes.label : '';
+    sc.weisPts = this.weisRes ? this.weisRes.pts : 0;
+    sc.weisCards = this.weisRes ? (this.weisRes.cards || []) : [];
     this.lastScore = sc;
 
     var t = this.totals, tg = this.cfg.target;

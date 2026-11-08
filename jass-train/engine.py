@@ -362,14 +362,14 @@ def round_gen(gtype, styles, rng, dealer, scores, n=4):
         return [team[s % 2] for s in range(4)], {'team': team, 'trump': trump}
     # molotov
     cards_pts = [sum(card_pts(c, trump) for c in won[s]) for s in range(n)]
-    # Plus und Minus getrennt runden (wie auf der Jasstafel), dann Plus minus Minus.
-    plus = [cards_pts[s] + tisch[s] for s in range(n)]
-    minus = [stoeck[s] for s in range(n)]
-    if weis_res:
-        minus[weis_res[0]] += weis_res[1]
-    plus[winner] += 5
-    tall = [_tallies(plus[s]) - _tallies(minus[s]) for s in range(n)]
-    raw = [plus[s] - minus[s] for s in range(n)]
+    # Jasstafel: Kartenpunkte (mit letztem Stich) einmal gerundet; Tischweis, Weis und Stöck
+    # sind glatte Striche. Striche = Plus minus Minus.
+    weis_pts = [weis_res[1] if (weis_res and weis_res[0] == s) else 0 for s in range(n)]
+    bonus = [5 if s == winner else 0 for s in range(n)]
+    plus = [_tallies(cards_pts[s] + bonus[s]) + tisch[s] // 10 for s in range(n)]
+    minus = [(stoeck[s] + weis_pts[s]) // 10 for s in range(n)]
+    tall = [plus[s] - minus[s] for s in range(n)]
+    raw = [cards_pts[s] + bonus[s] + tisch[s] - stoeck[s] - weis_pts[s] for s in range(n)]
     return tall, {'raw': raw, 'plus': plus, 'minus': minus, 'trump': trump, 'card': cards_pts, 'tisch': tisch, 'stoeck': stoeck, 'weis': weis_res}
 
 

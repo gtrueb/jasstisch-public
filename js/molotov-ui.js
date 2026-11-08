@@ -66,6 +66,34 @@
 
   function posOf(st, seat) { return POS[st.n][seat]; }
 
+  // Gewinner-Weis nach dem ersten Stich: beim Spieler mit Weis, höchstens 5 s oder bis "Weiter".
+  var weisView = null, weisTimer = null, shownRound = -1;
+
+  function closeWeisView() {
+    weisView = null;
+    clearTimeout(weisTimer);
+    weisTimer = null;
+  }
+
+  function maybeShowWeisView(st) {
+    if (st.phase !== 'play' || st.trickNo !== 1 || !st.weisRes) return;
+    var key = st.history.length;          // bleibt während einer Runde gleich
+    if (shownRound === key) return;       // nur einmal pro Runde
+    shownRound = key;
+    weisView = { key: key, seat: st.weisRes.seat, label: st.weisRes.label, pts: st.weisRes.pts, cards: st.weisRes.cards || [] };
+    clearTimeout(weisTimer);
+    weisTimer = setTimeout(function () { closeWeisView(); if (game) render(game); }, 5000);
+  }
+
+  function weisBlockHtml(v) {
+    var cards = v.cards.map(function (c) {
+      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
+    }).join('');
+    return '<div class="seat-weis"><div class="sw-title">Weis: ' + esc(v.label) + ' (' + v.pts + ')</div>' +
+      '<div class="weis-cards">' + cards + '</div>' +
+      '<button type="button" class="btn small" id="weis-weiter">Weiter</button></div>';
+  }
+
   function renderSeats(st) {
     var used = {};
     for (var seat = 0; seat < st.n; seat++) {
@@ -86,7 +114,12 @@
         backs += '</div>';
       }
       box.innerHTML = chip + backs;
+      if (weisView && weisView.key === st.history.length && weisView.seat === seat) {
+        box.innerHTML += weisBlockHtml(weisView);
+      }
     }
+    var wb = document.getElementById('weis-weiter');
+    if (wb) wb.addEventListener('click', function () { closeWeisView(); if (game) render(game); });
     // Nicht benutzte Plätze ausblenden (bei 3 Spielern der obere Platz)
     ['seat-0', 'seat-1', 'seat-2', 'seat-3'].forEach(function (id) {
       if (!used[id]) { var e = $(id); e.hidden = true; e.innerHTML = ''; }
@@ -162,14 +195,6 @@
         return '<span>' + esc(nameOf(a.seat)) + ': ' + esc(a.label) + ' (' + a.pts + ')</span>';
       });
       weis = '<div class="weis"><b>Weis angesagt</b>' + rows.join('') + '</div>';
-    } else if (st.phase === 'play' && st.cfg.weis && st.weisRes && st.trickNo === 1) {
-      // Der Gewinner-Weis mit seinen Karten: für alle sichtbar, wenn man nicht gewinnt.
-      var cards = (st.weisRes.cards || []).map(function (c) {
-        return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="' + esc(c.r + ' ' + SUIT_LABEL[c.s]) + '">';
-      }).join('');
-      weis = '<div class="weis"><b>Weis von ' + esc(nameOf(st.weisRes.seat)) + ' (Minus)</b>' +
-        '<span>' + esc(st.weisRes.label) + ': ' + st.weisRes.pts + '</span>' +
-        '<div class="weis-cards">' + cards + '</div></div>';
     }
     $('weis').innerHTML = weis;
     var bw = $('btn-weis');
@@ -256,10 +281,16 @@
 
   function renderChalk(st) {
     var html = '';
+    var live = st.phase === 'play' || st.phase === 'deal';   // während der Runde: sofort eintragen
     for (var s = 0; s < st.n; s++) {
-      var t = st.totals[s];
       var plus = st.plusStr ? st.plusStr[s] : 0;
       var minus = st.minusStr ? st.minusStr[s] : 0;
+      if (live) {
+        plus += Math.round((st.roundTisch ? st.roundTisch[s] : 0) / 10);
+        minus += Math.round(((st.weisRes && st.weisRes.seat === s) ? st.weisRes.pts : 0) / 10);
+        minus += Math.round((st.roundStoeck ? st.roundStoeck[s] : 0) / 10);
+      }
+      var t = plus - minus;
       html += '<div class="chalk-col"><div class="chalk-name">' + esc(nameOf(s)) + '</div>' +
         '<div class="chalk-plus">' + strokesHtml(plus) + '</div>' +
         '<div class="chalk-line"></div>' +
@@ -341,6 +372,7 @@
   function render(g) {
     if (!g || g !== game) return;
     var st = g.stateForUI();
+    maybeShowWeisView(st);
     renderSeats(st);
     renderHand(st);
     renderTrick(st);
@@ -368,6 +400,8 @@
   function startGame(settings) {
     lastSettings = settings;
     seen = null;
+    closeWeisView();
+    shownRound = -1;
     $('setup').hidden = true;
     $('table').hidden = false;
     $('modal').hidden = true;

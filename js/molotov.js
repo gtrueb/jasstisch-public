@@ -266,13 +266,14 @@
     if (this.cfg.lastTrick) bonus[this.lastWinner] += LAST_TRICK;
     if (this.weisRes) weis[this.weisRes.seat] = this.weisRes.pts;
 
-    // Plus und Minus werden getrennt auf Striche gerundet (wie auf der Jasstafel).
+    // Jasstafel: Kartenpunkte (mit letztem Stich) einmal gerundet. Tischweis, Weis und Stöck
+    // sind immer glatte Striche (durch 10 teilbar) und werden direkt eingetragen.
     var raw = zeros(n), t = zeros(n), ps = zeros(n), ms = zeros(n), s;
     for (s = 0; s < n; s++) {
       var plusPts = card[s] + bonus[s] + this.tisch[s];
       var minusPts = weis[s] + this.stoeck[s];
-      ps[s] = tallies(plusPts);
-      ms[s] = tallies(minusPts);
+      ps[s] = tallies(card[s] + bonus[s]) + Math.round(this.tisch[s] / 10);
+      ms[s] = Math.round(minusPts / 10);
       this.plusStr[s] += ps[s];
       this.minusStr[s] += ms[s];
       raw[s] = plusPts - minusPts;

@@ -23,7 +23,9 @@
       schellen7: !!cfg.schellen7
     };
     this.delays = Object.assign({}, DEFAULT_DELAYS, cfg.delays || {});
-    this.sched = cfg.sched || function (fn, ms) { return setTimeout(fn, ms); };
+    this.sched = cfg.sched || function (fn, ms) {
+      return (typeof window !== 'undefined' && window.JassClock) ? window.JassClock.sched(fn, ms) : setTimeout(fn, ms);
+    };
     this.rnd = cfg.rnd || Math.random;
     this.onUpdate = cfg.onUpdate || function () {};
     this.ai = AIS.createPlayer({ level: cfg.aiLevel || 'normal' });

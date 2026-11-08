@@ -428,3 +428,8 @@ button.card:disabled { cursor: default; }
 .scribe .plus { color: #bff0cc; min-height: 1.1em; }
 .scribe .minus { color: #f7b5b5; min-height: 1.1em; }
 .scribe .sline { display: block; width: 100%; height: 2px; background: #f2f2ea; margin: 3px 0; opacity: 0.9; }
+
+/* Molotow-Jasstafel: Plus oben, Strich, Minus unten, Zahl ganz unten */
+.chalk-col .chalk-plus, .chalk-col .chalk-minus { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; min-height: 30px; width: 100%; }
+.chalk-col .chalk-line { width: 80%; height: 2px; background: #f2f2ea; margin: 4px 0; opacity: 0.9; }
+.chalk-col .chalk-num { margin-top: 6px; }

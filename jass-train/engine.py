@@ -362,12 +362,15 @@ def round_gen(gtype, styles, rng, dealer, scores, n=4):
         return [team[s % 2] for s in range(4)], {'team': team, 'trump': trump}
     # molotov
     cards_pts = [sum(card_pts(c, trump) for c in won[s]) for s in range(n)]
-    raw = [cards_pts[s] + tisch[s] - stoeck[s] for s in range(n)]
+    # Plus und Minus getrennt runden (wie auf der Jasstafel), dann Plus minus Minus.
+    plus = [cards_pts[s] + tisch[s] for s in range(n)]
+    minus = [stoeck[s] for s in range(n)]
     if weis_res:
-        raw[weis_res[0]] -= weis_res[1]
-    raw[winner] += 5
-    tall = [_tallies(x) for x in raw]
-    return tall, {'raw': raw, 'trump': trump, 'card': cards_pts, 'tisch': tisch, 'stoeck': stoeck, 'weis': weis_res}
+        minus[weis_res[0]] += weis_res[1]
+    plus[winner] += 5
+    tall = [_tallies(plus[s]) - _tallies(minus[s]) for s in range(n)]
+    raw = [plus[s] - minus[s] for s in range(n)]
+    return tall, {'raw': raw, 'plus': plus, 'minus': minus, 'trump': trump, 'card': cards_pts, 'tisch': tisch, 'stoeck': stoeck, 'weis': weis_res}
 
 
 def card_pts_of(c, trump):

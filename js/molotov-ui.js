@@ -244,24 +244,26 @@
     return '<svg class="group single" viewBox="0 0 12 30" aria-hidden="true"><line x1="6" y1="3" x2="6" y2="27"/></svg>';
   }
 
-  // Jasstafel: oben die Pluspunkte (Tischweis), unter dem weissen Strich die Minuspunkte
-  // (Weis aus der Hand und Stöck) der laufenden Runde. Darunter die Striche.
+  // Jasstafel: oben alle Plus-Striche (Kartenpunkte, Tischweis, letzter Stich),
+  // unter dem weissen Strich alle Minus-Striche (Weis aus der Hand, Stöck).
+  // Ganz unten die Zahl: Plus minus Minus.
+  function strokesHtml(count) {
+    var marks = '';
+    for (var g = 0; g < Math.floor(count / 5); g++) marks += strokeGroup();
+    for (var k = 0; k < count % 5; k++) marks += strokeSingle();
+    return marks;
+  }
+
   function renderChalk(st) {
     var html = '';
     for (var s = 0; s < st.n; s++) {
       var t = st.totals[s];
-      var plus = st.roundTisch ? st.roundTisch[s] : 0;
-      var minus = (st.weisRes && st.weisRes.seat === s ? st.weisRes.pts : 0) + (st.roundStoeck ? st.roundStoeck[s] : 0);
-      var marks = '';
-      if (t > 0) {
-        for (var g = 0; g < Math.floor(t / 5); g++) marks += strokeGroup();
-        for (var k = 0; k < t % 5; k++) marks += strokeSingle();
-      }
+      var plus = st.plusStr ? st.plusStr[s] : 0;
+      var minus = st.minusStr ? st.minusStr[s] : 0;
       html += '<div class="chalk-col"><div class="chalk-name">' + esc(nameOf(s)) + '</div>' +
-        '<div class="scribe"><span class="plus">' + (plus ? '+' + plus : '&nbsp;') + '</span>' +
-        '<span class="sline"></span>' +
-        '<span class="minus">' + (minus ? '-' + minus : '&nbsp;') + '</span></div>' +
-        '<div class="chalk-marks">' + marks + '</div>' +
+        '<div class="chalk-plus">' + strokesHtml(plus) + '</div>' +
+        '<div class="chalk-line"></div>' +
+        '<div class="chalk-minus">' + strokesHtml(minus) + '</div>' +
         '<div class="chalk-num">' + t + '</div></div>';
     }
     $('chalk').innerHTML = html;

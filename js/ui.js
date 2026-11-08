@@ -50,34 +50,6 @@
 
   function teamName(t) { return t === 0 ? 'Du & Anna' : 'Max & Leo'; }
 
-  // Gewinner-Weis nach dem ersten Stich: beim Spieler mit Weis, höchstens 5 s oder bis "Weiter".
-  var weisView = null, weisTimer = null, shownRound = -1;
-
-  function closeWeisView() {
-    weisView = null;
-    clearTimeout(weisTimer);
-    weisTimer = null;
-  }
-
-  function maybeShowWeisView(st) {
-    if (st.phase !== 'play' || st.trickNo !== 1 || !st.weisRes) return;
-    var key = st.history.length;          // bleibt während einer Runde gleich
-    if (shownRound === key) return;       // nur einmal pro Runde
-    shownRound = key;
-    weisView = { key: key, seat: st.weisRes.seat, label: st.weisRes.label, pts: st.weisRes.pts, cards: st.weisRes.cards || [] };
-    clearTimeout(weisTimer);
-    weisTimer = setTimeout(function () { closeWeisView(); if (game) render(game); }, 5000);
-  }
-
-  function weisBlockHtml(v) {
-    var cards = v.cards.map(function (c) {
-      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
-    }).join('');
-    return '<div class="seat-weis"><div class="sw-title">Weis: ' + esc(v.label) + ' (' + v.pts + ')</div>' +
-      '<div class="weis-cards">' + cards + '</div>' +
-      '<button type="button" class="btn small" id="weis-weiter">Weiter</button></div>';
-  }
-
   function renderSeats(st) {
     [0, 1, 2, 3].forEach(function (seat) {
       var box = $('seat-' + seat);
@@ -95,12 +67,7 @@
         hand += '</div>';
       }
       box.innerHTML = chip + hand;
-      if (weisView && weisView.key === st.history.length && weisView.seat === seat) {
-        box.innerHTML += weisBlockHtml(weisView);
-      }
     });
-    var wb = document.getElementById('weis-weiter');
-    if (wb) wb.addEventListener('click', function () { closeWeisView(); if (game) render(game); });
   }
 
   // Sortierung: erst nach Farbe (Rosen, Schellen, Schilten, Eichel), dann nach Rang von klein nach gross.
@@ -278,6 +245,21 @@
     $('history').innerHTML = rows ? '<table><thead><tr><th>Runde</th><th>Trumpf</th><th>Du &amp; Anna</th><th>Max &amp; Leo</th><th>Stand</th></tr></thead><tbody>' + rows + '</tbody></table>' : '<p class="muted">Noch keine Runde gespielt.</p>';
   }
 
+  // Karten des Gewinner-Weis (zwischen den Runden)
+  function weisCardsHtml(cards) {
+    return cards.map(function (c) {
+      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
+    }).join('');
+  }
+
+  function weisBlockSchieber(sc) {
+    return (sc.weisCards && sc.weisCards.length)
+      ? '<div class="modal-weis"><b>Weis von ' + esc(SEAT_NAMES[sc.weisSeat]) + ' (' + sc.weisPts + ')</b>' +
+        '<div class="weis-cards">' + weisCardsHtml(sc.weisCards) + '</div>' +
+        '<span class="muted">' + esc(sc.weisLabel) + '</span></div>'
+      : '';
+  }
+
   function renderModal(st) {
     var m = $('modal');
     if (st.phase !== 'roundEnd' && st.phase !== 'gameEnd') {
@@ -305,7 +287,7 @@
       extra +
       '<div class="row sum"><span>Runde</span><span>' + sc.total[0] + '</span><span>' + sc.total[1] + '</span></div>' +
       '<div class="row"><span>Stand</span><span>' + st.totals[0] + '</span><span>' + st.totals[1] + '</span></div>' +
-      '</div>' + dbl +
+      '</div>' + weisBlockSchieber(sc) + dbl +
       (over
         ? '<button type="button" class="btn primary" id="btn-again">Neues Spiel</button>' +
           '<button type="button" class="btn ghost" id="btn-menu-end">Zum Menü</button>'
@@ -328,7 +310,6 @@
     if (!g || g !== game) return; // alte Spiele (z. B. nach "Menü") nicht mehr zeichnen
     var st = g.stateForUI();
     var settings = lastSettings;
-    maybeShowWeisView(st);
     renderSeats(st);
     renderHand(st);
     renderTrick(st);
@@ -351,9 +332,8 @@
   }
 
   function startGame(settings) {
+    if (game) game.stop();
     lastSettings = settings;
-    closeWeisView();
-    shownRound = -1;
     $('setup').hidden = true;
     $('table').hidden = false;
     $('modal').hidden = true;
@@ -396,6 +376,11 @@
     if (start) start.addEventListener('click', function () { startGame(readSettings()); });
     var leave = $('btn-leave');
     if (leave) leave.addEventListener('click', showSetup);
+    var reset = $('btn-reset');
+    if (reset) reset.addEventListener('click', function () {
+      // Neu beginnen mit den gleichen Einstellungen (oder den Einstellungen der Startseite).
+      startGame(game && lastSettings ? lastSettings : readSettings());
+    });
     setupTabs();
     var params = new URLSearchParams(window.location.search);
     if (params.get('autostart') === '1') startGame(readSettings());

@@ -66,34 +66,6 @@
 
   function posOf(st, seat) { return POS[st.n][seat]; }
 
-  // Gewinner-Weis nach dem ersten Stich: beim Spieler mit Weis, höchstens 5 s oder bis "Weiter".
-  var weisView = null, weisTimer = null, shownRound = -1;
-
-  function closeWeisView() {
-    weisView = null;
-    clearTimeout(weisTimer);
-    weisTimer = null;
-  }
-
-  function maybeShowWeisView(st) {
-    if (st.phase !== 'play' || st.trickNo !== 1 || !st.weisRes) return;
-    var key = st.history.length;          // bleibt während einer Runde gleich
-    if (shownRound === key) return;       // nur einmal pro Runde
-    shownRound = key;
-    weisView = { key: key, seat: st.weisRes.seat, label: st.weisRes.label, pts: st.weisRes.pts, cards: st.weisRes.cards || [] };
-    clearTimeout(weisTimer);
-    weisTimer = setTimeout(function () { closeWeisView(); if (game) render(game); }, 5000);
-  }
-
-  function weisBlockHtml(v) {
-    var cards = v.cards.map(function (c) {
-      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
-    }).join('');
-    return '<div class="seat-weis"><div class="sw-title">Weis: ' + esc(v.label) + ' (' + v.pts + ')</div>' +
-      '<div class="weis-cards">' + cards + '</div>' +
-      '<button type="button" class="btn small" id="weis-weiter">Weiter</button></div>';
-  }
-
   function renderSeats(st) {
     var used = {};
     for (var seat = 0; seat < st.n; seat++) {
@@ -114,12 +86,7 @@
         backs += '</div>';
       }
       box.innerHTML = chip + backs;
-      if (weisView && weisView.key === st.history.length && weisView.seat === seat) {
-        box.innerHTML += weisBlockHtml(weisView);
-      }
     }
-    var wb = document.getElementById('weis-weiter');
-    if (wb) wb.addEventListener('click', function () { closeWeisView(); if (game) render(game); });
     // Nicht benutzte Plätze ausblenden (bei 3 Spielern der obere Platz)
     ['seat-0', 'seat-1', 'seat-2', 'seat-3'].forEach(function (id) {
       if (!used[id]) { var e = $(id); e.hidden = true; e.innerHTML = ''; }
@@ -311,6 +278,13 @@
       : '<p class="muted">Noch keine Runde gespielt.</p>';
   }
 
+  // Karten des Gewinner-Weis (zwischen den Runden)
+  function weisCardsHtml(cards) {
+    return cards.map(function (c) {
+      return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
+    }).join('');
+  }
+
   function renderModal(st) {
     var m = $('modal');
     if (st.phase !== 'roundEnd' && st.phase !== 'gameEnd') {
@@ -342,6 +316,11 @@
     if (sc.stoeck.some(Boolean)) extra += row('Stöck (Minus)', sc.stoeck);
     var pillText = sc.trump ? 'Trumpf: ' + SUIT_LABEL[sc.trump] : 'Obenabe (kein Trumpf)';
     var rule = over ? '' : '<p class="muted">Striche = Punkte auf 10 gerundet, durch 10 geteilt</p>';
+    var weisBlock = (sc.weisCards && sc.weisCards.length)
+      ? '<div class="modal-weis"><b>Weis von ' + esc(nameOf(sc.weisSeat)) + ' (Minus ' + sc.weisPts + ')</b>' +
+        '<div class="weis-cards">' + weisCardsHtml(sc.weisCards) + '</div>' +
+        '<span class="muted">' + esc(sc.weisLabel) + '</span></div>'
+      : '';
     m.querySelector('.sheet').innerHTML =
       '<h2 id="modal-title">' + esc(title) + '</h2>' +
       '<div class="pill">' + esc(pillText) + '</div>' +
@@ -351,7 +330,7 @@
       row('Punkte', sc.raw, 'sum') +
       row('Striche', sc.tallies, 'sum') +
       row('Stand', st.totals) +
-      '</div>' + rule +
+      '</div>' + weisBlock + rule +
       (over
         ? '<button type="button" class="btn primary" id="btn-again">Neues Spiel</button>' +
           '<button type="button" class="btn ghost" id="btn-menu-end">Zum Menü</button>'
@@ -372,7 +351,6 @@
   function render(g) {
     if (!g || g !== game) return;
     var st = g.stateForUI();
-    maybeShowWeisView(st);
     renderSeats(st);
     renderHand(st);
     renderTrick(st);
@@ -398,10 +376,9 @@
   }
 
   function startGame(settings) {
+    if (game) game.stop();
     lastSettings = settings;
     seen = null;
-    closeWeisView();
-    shownRound = -1;
     $('setup').hidden = true;
     $('table').hidden = false;
     $('modal').hidden = true;
@@ -445,6 +422,11 @@
     if (start) start.addEventListener('click', function () { startGame(readSettings()); });
     var leave = $('btn-leave');
     if (leave) leave.addEventListener('click', showSetup);
+    var reset = $('btn-reset');
+    if (reset) reset.addEventListener('click', function () {
+      // Neu beginnen mit den gleichen Einstellungen (oder den Einstellungen der Startseite).
+      startGame(game && lastSettings ? lastSettings : readSettings());
+    });
     setupTabs();
     window.addEventListener('jass-tempo', function () {
       if (!game) return;

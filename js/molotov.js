@@ -74,11 +74,15 @@
 
   Game.prototype.emit = function () { this.onUpdate(this); };
 
+  // Altes Spiel beenden (z. B. beim Reset): keine weiteren Timer mehr.
+  Game.prototype.stop = function () { this.stopped = true; };
+
   Game.prototype.wait = function (ms, fn) {
     var self = this;
-    if (this.pending) return;
+    if (this.pending || this.stopped) return;
     this.pending = true;
     this.sched(function () {
+      if (self.stopped) return;
       self.pending = false;
       if (fn) fn();
       self.emit();
@@ -284,7 +288,11 @@
       round: this.roundNo, trump: trump, n: n,
       card: card, bonus: bonus, tisch: this.tisch.slice(), weis: weis.map(function (x) { return -x; }),
       stoeck: this.stoeck.map(function (x) { return -x; }),
-      raw: raw, tallies: t, plusStrokes: ps, minusStrokes: ms
+      raw: raw, tallies: t, plusStrokes: ps, minusStrokes: ms,
+      weisSeat: this.weisRes ? this.weisRes.seat : -1,
+      weisLabel: this.weisRes ? this.weisRes.label : '',
+      weisPts: this.weisRes ? this.weisRes.pts : 0,
+      weisCards: this.weisRes ? (this.weisRes.cards || []) : []
     };
     this.history.push({ round: this.roundNo, trump: trump, tallies: t.slice(), totals: this.totals.slice() });
 

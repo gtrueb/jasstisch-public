@@ -9,7 +9,13 @@
 })(typeof window !== 'undefined' ? window : this, function (R) {
   'use strict';
 
-  var LEVELS = { normal: { trumpThreshold: 75 } };
+  // Stufen: randomP = Anteil zufälliger Züge (leicht macht mehr Fehler, schwer spielt immer nach Regel)
+  var LEVELS = {
+    leicht: { trumpThreshold: 75, randomP: 0.4 },
+    mittel: { trumpThreshold: 75, randomP: 0.12 },
+    schwer: { trumpThreshold: 75, randomP: 0 },
+    normal: { trumpThreshold: 75, randomP: 0.12 }
+  };
 
   function trumpScore(hand, s) {
     var sc = 0, n = 0;
@@ -54,6 +60,9 @@
     var cfg = LEVELS[level];
 
     function chooseTrump(hand, o) {
+      if (cfg.randomP && Math.random() < cfg.randomP) {
+        return { action: 'choose', suit: R.SUITS[Math.floor(Math.random() * 4)], score: 0 };
+      }
       var best = null, bestScore = -1;
       R.SUITS.forEach(function (s) {
         var sc = trumpScore(hand, s);
@@ -67,6 +76,10 @@
 
     // seat: Sitz des Spielers. Partner ist (seat + 2) % 4.
     function choosePlay(hand, plays, trump, seat) {
+      if (cfg.randomP && Math.random() < cfg.randomP) {
+        var all = R.legalCards(hand, plays, trump);
+        return all[Math.floor(Math.random() * all.length)];
+      }
       var legal = R.legalCards(hand, plays, trump);
       if (legal.length === 1) return legal[0];
       if (!plays.length) return chooseLead(hand, trump, legal);

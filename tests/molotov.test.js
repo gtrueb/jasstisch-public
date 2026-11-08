@@ -65,7 +65,7 @@ test('Weisen only on own turn in trick 1, and only once', () => {
 
 test('Molotow Weis is minus for the single best player only', () => {
   const g = new M.Game({ rnd: seeded(3), sched: (fn) => fn(), delays: {}, end: 'rounds', rounds: 1, weis: true, stoeck: false, lastTrick: false });
-  g.humanSeat = -1;
+  g.humanSeats = [];
   g.startRound();
   assert.equal(g.phase, 'gameEnd');
   const sc = g.lastScore;
@@ -77,7 +77,7 @@ test('Molotow Weis is minus for the single best player only', () => {
 test('full AI games finish: 9 tricks, 36 distinct cards per round, winner has fewest tallies', () => {
   for (let seed = 1; seed <= 30; seed++) {
     const g = new M.Game({ end: seed % 2 ? 'limit' : 'rounds', limit: 50, rounds: 8, rnd: seeded(seed), sched: (fn) => fn(), delays: {} });
-    g.humanSeat = -1;
+    g.humanSeats = [];
     g.startRound();
     let guard = 0;
     while (g.phase !== 'gameEnd' && guard++ < 200) {
@@ -99,7 +99,7 @@ test('full AI games finish: 9 tricks, 36 distinct cards per round, winner has fe
 
 test('round tallies match rounded raw points, and card points total 152', () => {
   const g = new M.Game({ rnd: seeded(7), sched: (fn) => fn(), delays: {}, end: 'rounds', rounds: 1 });
-  g.humanSeat = -1;
+  g.humanSeats = [];
   g.startRound();
   assert.equal(g.phase, 'gameEnd');
   const sc = g.lastScore;

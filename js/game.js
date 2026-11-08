@@ -30,6 +30,7 @@
     this.onUpdate = cfg.onUpdate || function () {};
     this.ai = AIS.createPlayer({ level: cfg.aiLevel || 'normal' });
     this.humanSeat = 0;
+    this.humanSeats = (cfg.humanSeats || [0]).slice();
     this.totals = [0, 0];
     this.history = [];
     this.roundNo = 0;
@@ -121,7 +122,7 @@
       return;
     }
     if (this.phase === 'trump') {
-      if (this.chooser !== this.humanSeat) this.wait(this.delays.trump, this.aiTrump.bind(this));
+      if (!this.isHuman(this.chooser)) this.wait(this.delays.trump, this.aiTrump.bind(this));
       return;
     }
     if (this.phase !== 'play') return;
@@ -131,7 +132,7 @@
       return;
     }
     var seat = this.turnSeat();
-    if (seat !== this.humanSeat) {
+    if (!this.isHuman(seat)) {
       var ms = this.delays.aiMin + Math.floor(this.rnd() * (this.delays.aiMax - this.delays.aiMin + 1));
       this.wait(ms, this.aiPlay.bind(this));
     }
@@ -156,23 +157,9 @@
   };
 
   // Ids der Karten des eigenen angesagten Weis (zum Hervorheben), sonst [].
-  Game.prototype.humanWeisIds = function () {
-    // Nur markieren, solange man am Zug ist und den Weis noch nicht bestätigt hat.
-    if (this.phase !== 'play' || this.trickNo !== 0 || this.turnSeat() !== this.humanSeat || this.weisDecided[this.humanSeat]) return [];
-    var t = R.weisTotal(this.hands[this.humanSeat] || []);
-    return t ? t.cards.map(function (c) { return c.id; }) : [];
-  };
 
-  Game.prototype.humanAnnounce = function () {
-    var ok = this.announceWeis(this.humanSeat);
-    this.emit();
-    return ok;
-  };
 
   // Die beste Weisen-Kombination des Menschen (für die Schaltfläche), oder null.
-  Game.prototype.humanBestWeis = function () {
-    return R.weisTotal(this.hands[this.humanSeat] || []);
-  };
 
   Game.prototype.aiTrump = function () {
     var d = this.ai.chooseTrump(this.hands[this.chooser], { canSchieben: this.canSchieben });
@@ -183,13 +170,6 @@
     }
   };
 
-  Game.prototype.humanChooseTrump = function (suit) {
-    if (this.phase !== 'trump' || this.chooser !== this.humanSeat) return false;
-    this.setTrump(suit);
-    this.emit();
-    this.tick();
-    return true;
-  };
 
   Game.prototype.doSchieben = function () {
     if (!this.canSchieben) return false;
@@ -201,10 +181,6 @@
     return true;
   };
 
-  Game.prototype.humanSchieben = function () {
-    if (this.phase !== 'trump' || this.chooser !== this.humanSeat) return false;
-    return this.doSchieben();
-  };
 
   Game.prototype.setTrump = function (suit) {
     this.trump = suit;
@@ -244,22 +220,13 @@
 
   Game.prototype.aiPlay = function () {
     var seat = this.turnSeat();
+    if (this.isHuman(seat)) return;   // Platz wurde inzwischen von einem Menschen übernommen
     if (this.trickNo === 0 && !this.weisDecided[seat]) this.announceWeis(seat);
     var card = this.ai.choosePlay(this.hands[seat], this.plays, this.trump, seat);
     this.playCard(seat, card);
   };
 
-  Game.prototype.humanPlay = function (cardId) {
-    if (this.turnSeat() !== this.humanSeat || this.phase !== 'play') return false;
-    var card = this.hands[this.humanSeat].filter(function (c) { return c.id === cardId; })[0];
-    if (!card) return false;
-    return this.playCard(this.humanSeat, card);
-  };
 
-  Game.prototype.humanLegal = function () {
-    if (this.phase !== 'play' || this.turnSeat() !== this.humanSeat || this.plays.length === 4) return [];
-    return R.legalCards(this.hands[this.humanSeat], this.plays, this.trump).map(function (c) { return c.id; });
-  };
 
   Game.prototype.finishTrick = function () {
     var w = R.winnerIndex(this.plays, this.trump);
@@ -319,7 +286,80 @@
     return true;
   };
 
-  Game.prototype.stateForUI = function () {
+  Game.prototype.isHuman = function (seat) { return this.humanSeats.indexOf(seat) >= 0; };
+
+  // Platz für einen Menschen setzen oder freigeben (bei Verbindungsverlust übernimmt die KI).
+  Game.prototype.setHuman = function (seat, on) {
+    var i = this.humanSeats.indexOf(seat);
+    if (on && i < 0) this.humanSeats.push(seat);
+    if (!on && i >= 0) this.humanSeats.splice(i, 1);
+    this.tick();
+  };
+
+  Game.prototype.announceBy = function (seat) {
+    var ok = this.announceWeis(seat);
+    this.emit();
+    return ok;
+  };
+
+  Game.prototype.playBy = function (seat, cardId) {
+    if (this.turnSeat() !== seat || this.phase !== 'play') return false;
+    var card = this.hands[seat].filter(function (c) { return c.id === cardId; })[0];
+    if (!card) return false;
+    return this.playCard(seat, card);
+  };
+
+  Game.prototype.trumpBy = function (seat, suit) {
+    if (this.phase !== 'trump' || this.chooser !== seat) return false;
+    if (['R', 'S', 'L', 'E'].indexOf(suit) < 0) return false;
+    this.setTrump(suit);
+    this.emit();
+    this.tick();
+    return true;
+  };
+
+  Game.prototype.schiebenBy = function (seat) {
+    if (this.phase !== 'trump' || this.chooser !== seat) return false;
+    return this.doSchieben();
+  };
+
+  // Eine Aktion eines Platzes ausführen. Gibt true zurück, wenn sie gültig war.
+  Game.prototype.act = function (seat, a) {
+    if (!a || typeof a !== 'object') return false;
+    if (a.type === 'card') return this.playBy(seat, a.id);
+    if (a.type === 'trump') return this.trumpBy(seat, a.suit);
+    if (a.type === 'schieben') return this.schiebenBy(seat);
+    if (a.type === 'weis') return this.announceBy(seat);
+    if (a.type === 'release') return this.releaseHold();
+    if (a.type === 'next') return this.nextRound();
+    return false;
+  };
+
+  Game.prototype.humanAnnounce = function () { return this.announceBy(this.humanSeat); };
+  Game.prototype.humanChooseTrump = function (suit) { return this.trumpBy(this.humanSeat, suit); };
+  Game.prototype.humanSchieben = function () { return this.schiebenBy(this.humanSeat); };
+  Game.prototype.humanPlay = function (cardId) { return this.playBy(this.humanSeat, cardId); };
+  Game.prototype.humanLegal = function () { return this.legalFor(this.humanSeat); };
+
+  Game.prototype.legalFor = function (seat) {
+    if (this.phase !== 'play' || this.turnSeat() !== seat || this.plays.length === 4) return [];
+    return R.legalCards(this.hands[seat], this.plays, this.trump).map(function (c) { return c.id; });
+  };
+
+  Game.prototype.humanWeisIds = function (seat) {
+    if (seat === undefined) seat = this.humanSeat;
+    if (this.phase !== 'play' || this.trickNo !== 0 || this.turnSeat() !== seat || this.weisDecided[seat]) return [];
+    var t = R.weisTotal(this.hands[seat] || []);
+    return t ? t.cards.map(function (c) { return c.id; }) : [];
+  };
+
+  Game.prototype.humanBestWeis = function (seat) {
+    if (seat === undefined) seat = this.humanSeat;
+    return R.weisTotal(this.hands[seat] || []);
+  };
+
+  Game.prototype.stateForUI = function (seat) {
+    if (seat === undefined) seat = this.humanSeat;
     return {
       phase: this.phase,
       trump: this.trump,
@@ -338,16 +378,17 @@
       cfg: this.cfg,
       weisAnn: this.weisAnn.map(function (a) { return { seat: a.seat, label: a.total.label, pts: a.total.pts, order: a.order }; }),
       weisRes: this.weisRes ? { seat: this.weisRes.seat, label: this.weisRes.label, pts: this.weisRes.pts, cards: this.weisRes.cards } : null,
-      humanBest: this.phase === 'play' && this.trickNo === 0 && !this.weisDecided[this.humanSeat] ? this.humanBestWeis() : null,
-      humanWeisDone: this.weisDecided[this.humanSeat],
-      humanWeisIds: this.humanWeisIds(),
+      humanBest: this.phase === 'play' && this.trickNo === 0 && !this.weisDecided[seat] ? this.humanBestWeis(seat) : null,
+      humanWeisDone: this.weisDecided[seat],
+      me: seat,
+      humanWeisIds: this.humanWeisIds(seat),
       weisHold: !!this.hold,
       lastEvent: this.lastEvent,
       lastScore: this.lastScore,
       history: this.history,
       gameWinner: this.gameWinner,
       turnSeat: this.phase === 'play' ? this.turnSeat() : null,
-      legal: this.humanLegal()
+      legal: this.legalFor(seat)
     };
   };
 

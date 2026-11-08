@@ -9,6 +9,7 @@
   var M = window.JassMolotov;
 
   var SEAT_NAMES = ['Du', 'Max', 'Anna', 'Leo'];
+  var curNames = SEAT_NAMES;   // Namen der aktuellen Sicht (Online: echte Namen)
   var SUIT_LABEL = { R: 'Rosen', S: 'Schellen', L: 'Schilten', E: 'Eichel' };
   var RANK_LONG = { U: 'Under', O: 'Ober', K: 'König', A: 'Ass' };
   var SUIT_ORDER = { R: 0, S: 1, L: 2, E: 3 };
@@ -71,7 +72,7 @@
     var cards = (w.cards || []).map(function (c) {
       return '<img class="mini-face" src="assets/cards/' + c.s + FACE_CODE[c.r] + '.svg" alt="">';
     }).join('');
-    return '<div class="seat-weis"><div class="sw-title">Weis von ' + esc(SEAT_NAMES[w.seat]) + ': ' + esc(w.label) + ' (' + w.pts + ')</div>' +
+    return '<div class="seat-weis"><div class="sw-title">Weis von ' + esc(curNames[w.seat]) + ': ' + esc(w.label) + ' (' + w.pts + ')</div>' +
       '<div class="weis-cards">' + cards + '</div>' +
       '<button type="button" class="btn small" id="weis-weiter">Weiter</button></div>';
   }
@@ -86,7 +87,7 @@
       var active = st.turnSeat === seat;
       var wins = st.trickWins[seat];
       box.className = 'seat seat-' + pos + (active ? ' active' : '') + ' p' + seat;
-      var chip = '<div class="chip"><span class="dot"></span><span class="name">' + esc(SEAT_NAMES[seat]) + '</span>' +
+      var chip = '<div class="chip"><span class="dot"></span><span class="name">' + esc(curNames[seat]) + '</span>' +
         '<small>' + wins + ' Stich' + (wins === 1 ? '' : 'e') + '</small></div>';
       var backs = '';
       if (seat !== 0) {
@@ -146,7 +147,7 @@
     });
   }
 
-  function nameOf(seat) { return SEAT_NAMES[seat]; }
+  function nameOf(seat) { return curNames[seat]; }
 
   function renderCenter(st, settings) {
     var msg = '';
@@ -285,7 +286,7 @@
       return '<tr><td>' + h.round + '</td><td>' + (h.trump ? '<span class="suit-' + h.trump + '">' + ICON[h.trump] + '</span>' : 'Obenabe') + '</td>' +
         h.tallies.slice(0, st.n).map(function (t) { return '<td>' + t + '</td>'; }).join('') + '</tr>';
     }).join('');
-    var heads = SEAT_NAMES.slice(0, st.n).map(function (x) { return '<th>' + esc(x) + '</th>'; }).join('');
+    var heads = curNames.slice(0, st.n).map(function (x) { return '<th>' + esc(x) + '</th>'; }).join('');
     $('history').innerHTML = rows
       ? '<table><thead><tr><th>Runde</th><th>Trumpf</th>' + heads + '</tr></thead><tbody>' + rows + '</tbody></table>'
       : '<p class="muted">Noch keine Runde gespielt.</p>';
@@ -321,7 +322,7 @@
       return '<div class="row' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span>' +
         vals.slice(0, n).map(function (v) { return '<span>' + v + '</span>'; }).join('') + '</div>';
     }
-    var head = '<div class="row head"><span></span>' + SEAT_NAMES.slice(0, n).map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</div>';
+    var head = '<div class="row head"><span></span>' + curNames.slice(0, n).map(function (x) { return '<span>' + esc(x) + '</span>'; }).join('') + '</div>';
     var extra = '';
     if (sc.bonus.some(Boolean)) extra += row('Letzter Stich', sc.bonus);
     if (sc.tisch.some(Boolean)) extra += row('Tischweis', sc.tisch);
@@ -364,6 +365,8 @@
   function render(g) {
     if (!g || g !== game) return;
     var st = g.stateForUI();
+    if (!st) return;
+    curNames = st.names || SEAT_NAMES;
     renderSeats(st);
     renderHand(st);
     renderTrick(st);
@@ -412,6 +415,7 @@
   }
 
   function showSetup() {
+    if (game && game.stop) game.stop();
     game = null;
     $('table').hidden = true;
     $('setup').hidden = false;
@@ -450,5 +454,12 @@
   }
 
   document.addEventListener('DOMContentLoaded', init);
-  window.JassMolotovUI = { startGame: startGame, showSetup: showSetup };
+  function attachOnline(adapter, settings) {
+    game = adapter;
+    lastSettings = settings || readSettings();
+    $('setup').hidden = true;
+    $('table').hidden = false;
+    $('modal').hidden = true;
+  }
+  window.JassMolotovUI = { startGame: startGame, showSetup: showSetup, attachOnline: attachOnline, readSettings: readSettings, render: function (g) { render(g); } };
 })();

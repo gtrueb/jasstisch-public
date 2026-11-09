@@ -519,5 +519,17 @@
     $('table').hidden = false;
     $('modal').hidden = true;
   }
-  window.JassMolotovUI = { startGame: startGame, showSetup: showSetup, attachOnline: attachOnline, readSettings: readSettings, readPlayers: readPlayers, render: function (g) { render(g); } };
+  // Regeln so setzen, wie sie der Host gewählt hat (nur für Mitspieler, die Schalter sind dann gesperrt).
+  function applySettings(r) {
+    if (!r) return;
+    var end = r.end === 'limit' ? 'limit' : (r.rounds === 12 ? 'rounds12' : 'rounds8');
+    var e = document.querySelector('input[name="end"][value="' + end + '"]');
+    if (e) e.checked = true;
+    $('opt-weis').checked = !!r.weis;
+    $('opt-stoeck').checked = !!r.stoeck;
+    $('opt-last').checked = !!r.lastTrick;
+    if ($('opt-undenufe')) $('opt-undenufe').checked = r.undenufe !== false;
+  }
+
+  window.JassMolotovUI = { startGame: startGame, showSetup: showSetup, attachOnline: attachOnline, readSettings: readSettings, readPlayers: readPlayers, applySettings: applySettings, render: function (g) { render(g); } };
 })();

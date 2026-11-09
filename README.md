@@ -57,9 +57,34 @@ Grenzen des Vertrauens (ehrlich beschrieben):
 - Ein Host, der den Code verändert, kann die Mischschritte manipulieren und so Karten erfahren. Dagegen fehlen überprüfbare Mischschritte (eigene Aufgabe, noch nicht gebaut).
 - Der Host kann den Ablauf stören, zum Beispiel Nachrichten verzögern oder die Runde abbrechen.
 - Ob ein Mitspieler die Farbe bedient, prüft nur sein eigenes Gerät. Der Host kennt die Hand nicht.
-- Fällt ein Mitspieler aus, wird die Runde abgebrochen und ohne ihn neu gestartet.
+- Fällt ein Mitspieler aus, wird die Runde abgebrochen und ohne ihn neu gestartet. Er sitzt danach zwei Runden als KI aus, auch wenn er sofort wieder verbunden ist. So kann niemand jede Runde mit einem Fehler abbrechen.
+- Geht der Host (Lobby verlassen, Tab zu, Verbindung weg), übernimmt der Mitspieler mit dem niedrigsten Platz die Lobby. Die anderen verbinden sich mit ihm neu. Mitten im Spiel startet die Runde neu. Punkte und Geber bleiben. Die Verlaufsliste wird nicht übernommen.
+- Die Lobby zeigt nur einen Hash der Platz-Tokens, nie den Token selbst.
+- Für Verbindungen über strenge Netze braucht es einen TURN-Server. Anleitung: Abschnitt „TURN einrichten (Cloudflare)“ unten.
 
 Tests: `node --test tests/*.test.js`. Die Datei `tests/remote-game.test.js` spielt eine verdeckte und eine offene Partie gleichzeitig und vergleicht sie nach jedem Zug.
+
+## TURN einrichten (Cloudflare)
+
+TURN ist ein Relais. Es springt ein, wenn zwei Geräte nicht direkt verbunden werden können (zum Beispiel im Mobilfunk oder in manchen Firmennetzen). Ohne TURN bleibt die Verbindung dann bei „Suche Lobby“ hängen.
+
+Die Zugangsdaten bleiben geheim. Sie liegen nur bei Cloudflare, nicht im Spiel-Code und nicht im Chat.
+
+1. Cloudflare-Konto anlegen (kostenlos).
+2. In der Cloudflare-Oberfläche unter Realtime → TURN einen Schlüssel anlegen. Die **Key-ID** kopieren.
+3. Einen **API-Token** für diesen Schlüssel erstellen. Welche Rechte er braucht, steht in der Cloudflare-Anleitung.
+4. Unter Workers & Pages einen neuen Worker anlegen. Den Inhalt von [turn-worker/worker.mjs](turn-worker/worker.mjs) einfügen und deployen.
+5. Im Worker unter Einstellungen → Variablen und Secrets zwei **Secrets** anlegen:
+   - `TURN_KEY_ID` = die Key-ID aus Schritt 2
+   - `TURN_KEY_API_TOKEN` = der Token aus Schritt 3
+   - Optional als normale Variable: `ALLOWED_ORIGIN` = nur die Herkunft, ohne Pfad und ohne `/` am Ende, z. B. `https://beispiel.example`
+6. Die Adresse des Workers (z. B. `https://NAME.SUBDOMAIN.workers.dev`) in [js/online.js](js/online.js) bei `TURN_ENDPOINT` eintragen.
+
+Grenzen:
+- Jeder, der die Worker-Adresse kennt, kann Zugangsdaten holen. Dann wird Datenvolumen verbraucht. `ALLOWED_ORIGIN` hält nur Browser auf. Das Kontingent im Cloudflare-Konto im Blick behalten.
+- Cloudflare nennt ein kostenloses Kontingent von 1.000 GB pro Monat. Quelle: [Cloudflare Realtime Preise](https://developers.cloudflare.com/realtime/pricing/).
+- Zugangsdaten laufen nach 24 Stunden ab. Die Seite holt bei jeder Lobby neue. Eine Lobby, die länger als 24 Stunden läuft, kann den Relais-Weg verlieren. Dann hilft ein Neuladen der Seite.
+- Gegen Missbrauch: In Cloudflare eine Ratenbegrenzung (Rate Limiting) für den Worker einrichten. Das ist eine Einstellung im Cloudflare-Dashboard, nicht im Code. Wie genau sie heißt, habe ich nicht geprüft.
 
 ## Zeiten
 

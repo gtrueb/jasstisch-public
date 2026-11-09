@@ -562,3 +562,11 @@ button.card:disabled { cursor: default; }
   .suit-btn img.suit-img { width: 18px; height: 18px; }
   .schieben { padding: 6px 12px; font-size: 0.85rem; }
 }
+
+/* Handy: eine Reihe, die Karten füllen die ganze Breite (--n = Anzahl Karten, siehe renderHand) */
+@media (max-width: 680px) {
+  .hand-row { width: 100%; }
+  .hand .hand-row .card + .card {
+    margin-left: calc((100% - var(--card-w)) / (var(--n) - 1) - var(--card-w));
+  }
+}

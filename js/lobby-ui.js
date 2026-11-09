@@ -35,7 +35,7 @@
       '<div class="field"><span class="label">Dein Name</span><input id="on-name" class="text" maxlength="16" placeholder="Name"></div>' +
       '<button type="button" class="btn primary wide" id="on-create">Lobby erstellen</button>' +
       '<div class="join-row">' +
-      '<input id="on-code" class="text" maxlength="12" placeholder="Code eingeben">' +
+      '<input id="on-code" class="text" maxlength="4" placeholder="Code eingeben">' +
       '<button type="button" class="btn" id="on-join">Beitreten</button></div>' +
       '<div id="on-lobby" hidden>' +
       '<p class="lobby-code">Code: <b id="on-code-show"></b></p>' +

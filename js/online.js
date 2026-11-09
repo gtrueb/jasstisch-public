@@ -19,7 +19,7 @@
 
   var PREFIX = 'jasstisch-';
   var ALPH = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // ohne I, O, 0, 1
-  var CODE_LEN = 10;
+  var CODE_LEN = 4;
   var TURN_LIMIT_MS = 45000;
   var ASK_TIMEOUT_MS = 20000;
 

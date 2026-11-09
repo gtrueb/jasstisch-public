@@ -16,7 +16,7 @@ Dann im Browser öffnen: http://localhost:8765/
 ## Spiele
 
 - `schieber.html`: Schieber (4 Spieler, zwei Teams, Trumpf wird gewählt)
-- `molotov.html`: Molotov (jeder für sich, wenigste Striche gewinnen)
+- `molotov.html`: Molotov (jeder für sich, wenigste Striche gewinnen). Schalter „Undenufe und Slalom“: erste 6 der Runde setzt Undenufe, erstes Ass setzt Obenabe, jede andere Karte setzt Farbtrumpf. Spielt der Setzer im nächsten Stich die Gegenkarte, wechselt der Modus in jedem Stich bis Rundenende (-20 einmal für den Setzer). Gilt nur für die Runde.
 
 ## Tests
 
@@ -30,7 +30,7 @@ node --test tests/*.test.js
 - `js/ai-schieber.js`: Computer-Gegner für Schieber (Teams)
 - `js/ai-molotov.js`: Computer-Gegner für Molotov (jeder für sich). Beide haben eine `level`-Option für später.
 - `js/game.js`: Ablauf Schieber (Runden, Weisen, Timer)
-- `js/molotov.js`: Ablauf Molotov (Obenabe, Tischweis, Striche)
+- `js/molotov.js`: Ablauf Molotov (Obenabe, Undenufe, Slalom, Tischweis, Striche)
 - `js/ui.js`, `js/molotov-ui.js`: Oberfläche
 - `assets/style.css`: Aussehen
 - `assets/suits/`: Farbsymbole von Wikimedia Commons, Quellen und Lizenzen in `assets/suits/CREDITS.md`

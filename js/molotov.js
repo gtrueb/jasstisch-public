@@ -25,6 +25,7 @@
   var ROUNDS_DEFAULT = 8;
   var STOECK = 20;
   var LAST_TRICK = 5;
+  var SLALOM = 20;                       // Bonus (Minus) für den Setzer, wenn der Modus wechselt
 
   // Striche: Betrag auf 10 runden, dann durch 10 teilen. Vorzeichen bleibt.
   function tallies(points) {
@@ -49,7 +50,8 @@
       rounds: cfg.rounds || ROUNDS_DEFAULT,
       weis: cfg.weis !== false,
       stoeck: cfg.stoeck !== false,
-      lastTrick: cfg.lastTrick !== false
+      lastTrick: cfg.lastTrick !== false,
+      undenufe: cfg.undenufe !== false   // Standard: an. 6 setzt Undenufe, Ass setzt Obenabe, Wechsel = Slalom
     };
     this.n = this.cfg.players;
     this.delays = Object.assign({}, DEFAULT_DELAYS, cfg.delays || {});
@@ -199,6 +201,13 @@
     this.annCounter = 0;
     this.weisRes = null;                   // stärkste Weisen-Kombination (Minus für den Besitzer)
     this.tischEvents = [];
+    // Undenufe/Obenabe gilt nur für diese Runde (Start: Obenabe, kein Modus gesetzt)
+    this.modeSet = null;                   // null | 'obenabe' | 'undenufe'
+    this.slalomBonus = zeros(n);           // -20 je Slalom (Minus für den Setzer)
+    this.slalomEvents = [];
+    this.setTrick = -1;                    // Stich, in dem der Modus gesetzt wurde
+    this.setSeat = -1;                     // Setzer des Modus
+    this.slalomStart = false;              // true, sobald der Setzer im Stich danach die Gegenkarte ausgespielt hat
   };
 
   Game.prototype.tick = function () {
@@ -289,8 +298,22 @@
     if (this.lastEvent && (this.lastEvent.type === 'stoeck' || this.lastEvent.type === 'weis')) this.lastEvent = null;
 
     // Trumpf setzen: wer die Farbe nicht bedienen kann, legt eine andere Farbe.
-    if (this.trump === null && this.plays.length > 0 && card.s !== this.plays[0].card.s) {
-      this.setTrump(card.s, seat);
+    // Mit Undenufe-Regel: die erste Abweichung der Runde mit einer 6 setzt Undenufe, mit einem Ass Obenabe.
+    // Jede andere Karte setzt Farbtrumpf (kein Modus mehr für diese Runde).
+    if (this.trump === null && !this.modeSet && this.plays.length > 0 && card.s !== this.plays[0].card.s) {
+      if (this.cfg.undenufe && (card.r === '6' || card.r === 'A')) {
+        this.setMode(card.r === '6' ? 'undenufe' : 'obenabe', seat);
+      } else {
+        this.setTrump(card.s, seat);
+      }
+    }
+
+    // Slalom: nur der Stich direkt nach dem Setzen zählt. Der Setzer (er gewinnt den Setzstich) spielt
+    // dort die Gegenkarte aus (6 nach Ass, Ass nach 6). Dann wechselt der Modus in jedem Stich bis Rundenende.
+    if (this.cfg.undenufe && this.modeSet && !this.slalomStart && this.plays.length === 0 &&
+        this.trickNo === this.setTrick + 1 && seat === this.setSeat) {
+      var opp = this.modeSet === 'undenufe' ? 'A' : '6';
+      if (card.r === opp) this.startSlalom(seat);
     }
 
     removeFromHand();
@@ -350,11 +373,48 @@
     void self;
   };
 
+  // Undenufe (true) oder Obenabe ohne Farbtrumpf. Nur dann gelten die Undenufe-Punkte und die Rangfolge.
+  Game.prototype.undenufeNow = function () {
+    return this.trump === null && this.modeSet === 'undenufe';
+  };
+
+  // Modus setzen (erste 6 oder Ass der Runde). Der Setzer gewinnt diesen Stich.
+  Game.prototype.setMode = function (mode, seat) {
+    this.modeSet = mode;
+    this.trumpSetBy = seat;
+    this.setTrick = this.trickNo;
+    this.setSeat = seat;
+    this.lastEvent = { type: 'mode', seat: seat, mode: mode };
+  };
+
+  // Slalom beginnt: der Setzer bekommt einmal -20 (zählt wie ein Stöck). Ab jetzt wechselt der Modus jeden Stich.
+  Game.prototype.startSlalom = function (seat) {
+    this.slalomStart = true;
+    this.slalomBonus[seat] += SLALOM;
+    var next = this.modeSet === 'undenufe' ? 'obenabe' : 'undenufe';
+    this.slalomEvents.push({ seat: seat, trick: this.trickNo + 1, mode: next });
+    this.lastEvent = { type: 'slalom', seat: seat, mode: next };
+  };
+
+  // Modus eines Stichs (Rangfolge und Sieger): 'undenufe' oder 'obenabe'. Null, wenn Farbtrumpf gilt.
+  // Im Slalom: ab dem Stich nach dem Setzen wechselt der Modus in jedem Stich.
+  Game.prototype.trickMode = function (t) {
+    if (this.trump !== null) return null;
+    var base = this.modeSet === 'undenufe' ? 'undenufe' : 'obenabe';
+    if (!this.modeSet || t < this.setTrick) return 'obenabe';   // vor dem Setzen: kein Modus, normale Rangfolge
+    if (!this.slalomStart || t < this.setTrick + 1 || (t - this.setTrick - 1) % 2 !== 0) return base;
+    return base === 'undenufe' ? 'obenabe' : 'undenufe';
+  };
+
+  Game.prototype.trickUndenufe = function (t) {
+    return this.trickMode(t === undefined ? this.trickNo : t) === 'undenufe';
+  };
+
   Game.prototype.aiPlay = function () {
     var seat = this.turnSeat();
     if (this.isHuman(seat)) return;   // Platz wurde inzwischen von einem Menschen übernommen
     if (this.trickNo === 0 && !this.weisDecided[seat]) this.announceWeis(seat);
-    var card = this.aiFor(seat).choosePlay(this.hands[seat], this.plays, this.trump, seat);
+    var card = this.aiFor(seat).choosePlay(this.hands[seat], this.plays, this.trump, seat, this.trickUndenufe());
     this.playCard(seat, card);
   };
 
@@ -362,7 +422,12 @@
 
   Game.prototype.finishTrick = function () {
     var cards = this.plays.map(function (p) { return p.card; });
-    var w = R.winnerIndex(this.plays, this.trump);
+    var und = this.trickUndenufe();
+    var w = R.winnerIndex(this.plays, this.trump, und);
+    // Die Setzkarte (6 oder Ass) gewinnt ihren Stich: sie kann nicht übertrumpft werden.
+    if (this.trump === null && this.setTrick === this.trickNo && this.setSeat >= 0) {
+      for (var i = 0; i < this.plays.length; i++) if (this.plays[i].seat === this.setSeat) w = i;
+    }
     var winner = this.plays[w].seat;
     this.wonTricks[winner].push(cards);
     this.trickWins[winner]++;
@@ -385,10 +450,12 @@
   Game.prototype.endRound = function () {
     var self = this, n = this.n;
     var trump = this.trump;
+    // Kartenpunkte: alle Stiche mit dem Modus am Rundenende (wie der Farbtrumpf). So ergeben sie immer 152.
+    var und = this.undenufeNow();
     var card = zeros(n), bonus = zeros(n), weis = zeros(n);
-    this.wonTricks.forEach(function (tricks, s) {
-      tricks.forEach(function (cards) { card[s] += R.trickPoints(cards, trump); });
-    });
+    for (var cs = 0; cs < n; cs++) {
+      this.wonTricks[cs].forEach(function (tr) { card[cs] += R.trickPoints(tr, trump, und); });
+    }
     if (this.cfg.lastTrick) bonus[this.lastWinner] += LAST_TRICK;
     if (this.weisRes) weis[this.weisRes.seat] = this.weisRes.pts;
 
@@ -397,7 +464,7 @@
     var raw = zeros(n), t = zeros(n), ps = zeros(n), ms = zeros(n), s;
     for (s = 0; s < n; s++) {
       var plusPts = card[s] + bonus[s] + this.tisch[s];
-      var minusPts = weis[s] + this.stoeck[s];
+      var minusPts = weis[s] + this.stoeck[s] + this.slalomBonus[s];
       ps[s] = tallies(card[s] + bonus[s]) + Math.round(this.tisch[s] / 10);
       ms[s] = Math.round(minusPts / 10);
       this.plusStr[s] += ps[s];
@@ -408,6 +475,8 @@
     }
     this.lastScore = {
       round: this.roundNo, trump: trump, n: n,
+      mode: trump !== null ? trump : (this.modeSet || 'obenabe'),
+      slalom: this.slalomBonus.map(function (x) { return -x; }),
       card: card, bonus: bonus, tisch: this.tisch.slice(), weis: weis.map(function (x) { return -x; }),
       stoeck: this.stoeck.map(function (x) { return -x; }),
       raw: raw, tallies: t, plusStrokes: ps, minusStrokes: ms,
@@ -416,7 +485,8 @@
       weisPts: this.weisRes ? this.weisRes.pts : 0,
       weisCards: this.weisRes ? (this.weisRes.cards || []) : []
     };
-    this.history.push({ round: this.roundNo, trump: trump, tallies: t.slice(), totals: this.totals.slice() });
+    var modeNow = trump !== null ? trump : (this.modeSet || "obenabe");
+    this.history.push({ round: this.roundNo, trump: trump, mode: modeNow, tallies: t.slice(), totals: this.totals.slice() });
 
     var done;
     if (this.cfg.end === 'limit') {
@@ -459,7 +529,7 @@
       return this.trumpBy(seat, d.suit);
     }
     if (this.phase === 'play' && this.turnSeat() === seat) {
-      var card = this.aiFor(seat).choosePlay(this.hands[seat], this.plays, this.trump, seat);
+      var card = this.aiFor(seat).choosePlay(this.hands[seat], this.plays, this.trump, seat, this.trickUndenufe());
       return this.playCard(seat, card);
     }
     return false;
@@ -556,6 +626,10 @@
       gameWinners: this.gameWinners,
       turnSeat: this.phase === 'play' ? this.turnSeat() : null,
       humanSeats: this.humanSeats.slice(),
+      // Während des Spiels der Modus des laufenden Stichs; nach der Runde der Typ, der gewertet wurde.
+      undenufe: this.phase === 'play' ? this.trickUndenufe() : this.undenufeNow(),
+      modeSet: this.modeSet,
+      slalomBonus: this.slalomBonus.slice(),
       legal: this.legalFor(seat)
     };
   };

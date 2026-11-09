@@ -32,6 +32,8 @@
     });
     v.phase = st.phase;
     v.trump = st.trump;
+    v.undenufe = !!st.undenufe;
+    v.modeSet = st.modeSet || null;
     v.trickNo = st.trickNo;
     v.plays = st.plays.map(function (p) { return { seat: sm(p.seat), card: p.card }; });
     v.trickWins = rotArr(st.trickWins, me, n);
@@ -80,7 +82,7 @@
       v.history = (st.history || []).map(function (h) {
         return Object.assign({}, h, { totals: rotArr(h.totals, me, n), tallies: rotArr(h.tallies, me, n) });
       });
-      v.lastScore = st.lastScore ? rotScore(st.lastScore, me, ['card', 'bonus', 'tisch', 'weis', 'stoeck', 'raw', 'tallies', 'plusStrokes', 'minusStrokes'], n) : null;
+      v.lastScore = st.lastScore ? rotScore(st.lastScore, me, ['card', 'bonus', 'tisch', 'weis', 'stoeck', 'slalom', 'raw', 'tallies', 'plusStrokes', 'minusStrokes'], n) : null;
       if (v.lastScore && st.lastScore) v.lastScore.weisSeat = sm(st.lastScore.weisSeat);
       v.gameWinners = (st.gameWinners || []).map(sm);
       v.trumpSetBy = sm(st.trumpSetBy);

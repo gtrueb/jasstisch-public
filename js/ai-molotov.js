@@ -23,8 +23,8 @@
   }
 
   // Punkte zuerst (hohe Punkte loswerden), bei Gleichstand höherer Rang zuerst.
-  function dumpOrder(a, b, trump) {
-    var pa = R.cardPoints(a, trump), pb = R.cardPoints(b, trump);
+  function dumpOrder(a, b, trump, und) {
+    var pa = R.cardPoints(a, trump, und), pb = R.cardPoints(b, trump, und);
     if (pa !== pb) return pb - pa;
     return R.ORDER_PLAIN[b.r] - R.ORDER_PLAIN[a.r];
   }
@@ -34,7 +34,7 @@
     var level = LEVELS[opts.level] ? opts.level : 'normal';
     var cfg = LEVELS[level];
 
-    function choosePlay(hand, plays, trump, seat) {
+    function choosePlay(hand, plays, trump, seat, und) {
       if (cfg.randomP && Math.random() < cfg.randomP) {
         var all = R.legalFree(hand, plays);
         return all[Math.floor(Math.random() * all.length)];
@@ -45,7 +45,7 @@
       // Ausspielen: niedrigste Karte, bei Obenabe/Trumpf sonst die Farbe mit den meisten Karten
       if (!plays.length) {
         return legal.slice().sort(function (a, b) {
-          var pa = R.cardPoints(a, trump), pb = R.cardPoints(b, trump);
+          var pa = R.cardPoints(a, trump, und), pb = R.cardPoints(b, trump, und);
           if (pa !== pb) return pa - pb;
           return R.ORDER_PLAIN[a.r] - R.ORDER_PLAIN[b.r];
         })[0];
@@ -68,19 +68,19 @@
           .sort(function (a, b) { return R.cardPoints(a, null) - R.cardPoints(b, null); })[0];
       }
 
-      var w = R.winnerIndex(plays, trump);
+      var w = R.winnerIndex(plays, trump, und);
       var winnerCard = plays[w].card;
-      var pts = R.trickPoints(plays.map(function (p) { return p.card; }), trump);
-      var wins = legal.filter(function (c) { return R.beats(c, winnerCard, led, trump); });
+      var pts = R.trickPoints(plays.map(function (p) { return p.card; }), trump, und);
+      var wins = legal.filter(function (c) { return R.beats(c, winnerCard, led, trump, und); });
       var loses = legal.filter(function (c) { return wins.indexOf(c) < 0; });
 
       // Karten, die den Stich nicht gewinnen, sind gut: dann Punkte auf den Gewinner schieben.
       if (loses.length) {
-        return loses.slice().sort(function (a, b) { return dumpOrder(a, b, trump); })[0];
+        return loses.slice().sort(function (a, b) { return dumpOrder(a, b, trump, und); })[0];
       }
       // Muss gewinnen: möglichst billig, damit der Stich wenig Punkte bringt.
       return wins.slice().sort(function (a, b) {
-        var pa = R.cardPoints(a, trump), pb = R.cardPoints(b, trump);
+        var pa = R.cardPoints(a, trump, und), pb = R.cardPoints(b, trump, und);
         if (pa !== pb) return pa - pb;
         return R.ORDER_PLAIN[a.r] - R.ORDER_PLAIN[b.r];
       })[0];

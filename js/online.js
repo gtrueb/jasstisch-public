@@ -567,7 +567,7 @@
 
   function legalIds(hand, plays, trump) {
     var R = root.JassRules;
-    var list = S.gtype === 'molotov' ? R.legalFree(hand, plays) : R.legalCards(hand, plays, trump);
+    var list = S.gtype === 'molotov' ? R.legalFree(hand, plays, trump) : R.legalCards(hand, plays, trump);
     return list.map(function (c) { return c.id; });
   }
 

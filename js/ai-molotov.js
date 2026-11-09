@@ -36,10 +36,10 @@
 
     function choosePlay(hand, plays, trump, seat, und) {
       if (cfg.randomP && Math.random() < cfg.randomP) {
-        var all = R.legalFree(hand, plays);
+        var all = R.legalFree(hand, plays, trump);
         return all[Math.floor(Math.random() * all.length)];
       }
-      var legal = R.legalFree(hand, plays);
+      var legal = R.legalFree(hand, plays, trump);
       if (legal.length === 1) return legal[0];
 
       // Ausspielen: niedrigste Karte, bei Obenabe/Trumpf sonst die Farbe mit den meisten Karten

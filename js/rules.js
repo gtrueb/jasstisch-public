@@ -294,11 +294,14 @@
   }
 
   // Molotow: jeder bedient die Farbe, wenn er kann. Sonst darf er jede Karte spielen.
-  function legalFree(hand, plays) {
+  // Ist eine Farbe Trumpf, darf man deren Karten immer spielen, auch wenn man die Farbe bedienen kann.
+  function legalFree(hand, plays, trump) {
     if (!plays.length) return hand.slice();
     var led = plays[0].card.s;
     var follow = hand.filter(function (c) { return c.s === led; });
-    return follow.length ? follow : hand.slice();
+    if (!follow.length) return hand.slice();
+    if (trump == null) return follow;
+    return hand.filter(function (c) { return c.s === led || c.s === trump; });
   }
 
   var api = {

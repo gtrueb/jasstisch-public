@@ -555,6 +555,7 @@
       history: this.history,
       gameWinners: this.gameWinners,
       turnSeat: this.phase === 'play' ? this.turnSeat() : null,
+      humanSeats: this.humanSeats.slice(),
       legal: this.legalFor(seat)
     };
   };

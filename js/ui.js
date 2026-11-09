@@ -69,7 +69,13 @@
       var wins = st.trickWins[seat];
       var label = '';
       box.className = 'seat seat-' + SEAT_POS[seat] + (active ? ' active' : '') + ' team' + (seat % 2);
-      var chip = '<div class="chip"><span class="dot"></span><span class="name">' + esc(curNames[seat]) + '</span>' +
+      // Mensch oder KI: aus der Ansicht (Index = Platz aus Sicht dieses Geräts)
+      var isAI = st.human ? !st.human[seat] : seat !== 0;
+      var avatarHtml = window.JassTable
+        ? '<span class="av' + (isAI ? ' ai' : '') + '">' + JassTable.avatar(curNames[seat] + '|' + seat, isAI) +
+          (seat !== 0 ? '<span class="badge">' + st.hands[seat].length + '</span>' : '') + '</span>'
+        : '';
+      var chip = '<div class="chip">' + avatarHtml + '<span class="dot"></span><span class="name">' + esc(curNames[seat]) + '</span>' +
         '<small>' + wins + ' Stich' + (wins === 1 ? '' : 'e') + '</small>' + label + '</div>';
       var hand = '';
       if (seat !== 0) {
@@ -79,6 +85,9 @@
         hand += '</div>';
       }
       box.innerHTML = chip + hand;
+      // Name auch auf dem Filz (Handy)
+      var fnEl = document.getElementById('fn-' + SEAT_POS[seat]);
+      if (fnEl) { fnEl.textContent = curNames[seat]; fnEl.classList.toggle('active', active); }
       if (st.weisHold && st.weisRes && st.weisRes.seat === seat) box.innerHTML += weisBlockHtml(st.weisRes);
     });
     var wb = document.getElementById('weis-weiter');
@@ -102,14 +111,25 @@
     var canPlay = st.phase === 'play' && st.turnSeat === 0;
     var dealing = st.phase === 'deal' || st.phase === 'dealing';
     var weisIds = st.humanWeisIds || [];
-    sortHand(hand).forEach(function (card, idx) {
-      var ok = canPlay && legal.indexOf(card.id) >= 0;
-      var el = cardNode(card, { dim: canPlay && !ok, disabled: !ok });
-      el.style.setProperty('--i', idx);
-      if (weisIds.indexOf(card.id) >= 0) el.classList.add('weis-card');
-      if (dealing) el.classList.add('dealt');
-      if (ok) el.addEventListener('click', function () { game.humanPlay(card.id); });
-      box.appendChild(el);
+    var sorted = sortHand(hand);
+    // Handy: ab 7 Karten zwei Reihen, damit die Karten große Antippflächen haben
+    var rows = window.JassTable ? JassTable.handRows(sorted.length, JassTable.isPhone()) : [sorted.length];
+    box.classList.toggle('two-rows', rows.length > 1);
+    var at = 0;
+    rows.forEach(function (count) {
+      var row = document.createElement('div');
+      row.className = 'hand-row';
+      box.appendChild(row);
+      for (var k = 0; k < count; k++, at++) {
+        var card = sorted[at];
+        var ok = canPlay && legal.indexOf(card.id) >= 0;
+        var el = cardNode(card, { dim: canPlay && !ok, disabled: !ok });
+        el.style.setProperty('--i', at);
+        if (weisIds.indexOf(card.id) >= 0) el.classList.add('weis-card');
+        if (dealing) el.classList.add('dealt');
+        if (ok) el.addEventListener('click', function (id) { return function () { game.humanPlay(id); }; }(card.id));
+        row.appendChild(el);
+      }
     });
     box.classList.toggle('turn', canPlay);
   }

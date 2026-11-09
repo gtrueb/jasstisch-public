@@ -130,8 +130,9 @@
     var hand = st.hands[0] || [];
     box.classList.toggle('many', hand.length > 9);
     var sorted = sortHand(hand);
-    // Handy: ab 7 Karten zwei Reihen, damit die Karten große Antippflächen haben
-    var rows = window.JassTable ? JassTable.handRows(sorted.length, JassTable.isPhone()) : [sorted.length];
+    // Einzeilig: die Karten verteilen sich über die ganze Breite (CSS nutzt --n)
+    box.style.setProperty('--n', sorted.length);
+    var rows = window.JassTable ? JassTable.handRows(sorted.length) : [sorted.length];
     box.classList.toggle('two-rows', rows.length > 1);
     var at = 0;
     rows.forEach(function (count) {

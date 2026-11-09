@@ -59,11 +59,9 @@
     return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 680px)').matches;
   }
 
-  // Anzahl Karten je Reihe. Auf dem Handy ab 7 Karten zwei Reihen (oben weniger, unten mehr).
-  function handRows(n, phone) {
-    if (!phone || n <= 6) return [n];
-    var top = Math.ceil(n / 2);
-    return [top, n - top];
+  // Anzahl Karten je Reihe. Die Hand bleibt immer einzeilig und füllt die Breite (siehe CSS --n).
+  function handRows(n) {
+    return [n];
   }
 
   root.JassTable = { avatar: avatar, isPhone: isPhone, handRows: handRows };

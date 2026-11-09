@@ -66,6 +66,16 @@
   // Altes Spiel beenden (z. B. beim Reset): keine weiteren Timer mehr.
   Game.prototype.stop = function () { this.stopped = true; };
 
+  // Übernahme durch einen neuen Host (siehe js/online.js): Punkte und Rundennummer setzen, bevor die Runde startet.
+  // snap.dealer ist so gesetzt, dass startRound() den richtigen Geber ergibt.
+  Game.prototype.restore = function (snap) {
+    this.totals = snap.totals.slice();
+    this.roundNo = snap.roundNo;
+    this.dealer = snap.dealer;
+    if (snap.plusStr && this.plusStr) this.plusStr = snap.plusStr.slice();
+    if (snap.minusStr && this.minusStr) this.minusStr = snap.minusStr.slice();
+  };
+
   // Pause: Spiel hält an, bis "Weiter" gedrückt wird oder 5 Sekunden vorbei sind.
   Game.prototype.holdWeis = function () {
     var self = this, rid = this.roundId;

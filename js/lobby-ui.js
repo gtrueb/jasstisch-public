@@ -58,7 +58,7 @@
     $('on-create').addEventListener('click', function () {
       var name = $('on-name').value; localStorage.setItem('jasstisch-name', name);
       var players = GAME === 'molotov' ? UI.readPlayers() : 4;
-      window.JassOnline.createLobby(GAME, players, name);
+      window.JassOnline.createLobby(GAME, players, name, UI.readSettings());
     });
     $('on-join').addEventListener('click', function () {
       var name = $('on-name').value; localStorage.setItem('jasstisch-name', name);
@@ -77,6 +77,15 @@
         });
       });
     }
+
+    // Regeln ändert nur der Host. Jede Änderung geht an alle Mitspieler (und an einen neuen Host).
+    document.querySelectorAll('#setup > section.panel:not(.online-panel) input[type="checkbox"], #setup > section.panel:not(.online-panel) input[type="radio"]').forEach(function (i) {
+      i.addEventListener('change', function () {
+        var st = window.JassOnline.state;
+        if (st.role !== 'host' || st.started) return;
+        window.JassOnline.hostSetRules(UI.readSettings());
+      });
+    });
 
     // Modus-Auswahl: genau ein Bereich sichtbar
     document.querySelectorAll('.mode[data-mode]').forEach(function (b) {
@@ -141,6 +150,8 @@
     $('on-host').hidden = !isHost || lobby.started;
     $('on-guest').hidden = isHost;
     if (GAME === 'molotov') syncPlayersRadio(lobby.players);
+    // Mitspieler übernehmen die Regeln des Hosts (auch, wenn sie später Host werden)
+    if (!isHost && lobby.rules && UI.applySettings) UI.applySettings(lobby.rules);
     lockSetup(!isHost);
   }
 

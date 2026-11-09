@@ -452,5 +452,19 @@
     $('table').hidden = false;
     $('modal').hidden = true;
   }
-  window.JassUI = { startGame: startGame, showSetup: showSetup, attachOnline: attachOnline, readSettings: readSettings, render: function (g) { render(g); } };
+  // Regeln so setzen, wie sie der Host gewählt hat (nur für Mitspieler, die Schalter sind dann gesperrt).
+  function applySettings(r) {
+    if (!r) return;
+    if (r.target !== undefined) {
+      var t = document.querySelector('input[name="target"][value="' + r.target + '"]');
+      if (t) t.checked = true;
+    }
+    $('opt-weis').checked = !!r.weis;
+    $('opt-stoeck').checked = !!r.stoeck;
+    $('opt-match').checked = !!r.matchBonus;
+    $('opt-schilten').checked = !!r.schilten2;
+    $('opt-schellen7').checked = !!r.schellen7;
+  }
+
+  window.JassUI = { startGame: startGame, showSetup: showSetup, attachOnline: attachOnline, readSettings: readSettings, applySettings: applySettings, render: function (g) { render(g); } };
 })();

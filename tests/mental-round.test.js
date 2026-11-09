@@ -173,7 +173,9 @@ test('Betrug: falsche Karte mit falschem Beweis wird abgelehnt', async () => {
       if (!armed || msg.op !== 'reveal') return reply;
       const items = reply.items.slice();
       // Anderen Kartenwert anbieten, aber den echten Beweis lassen.
-      items[0] = { m: M.toHex(M.encodeIndex(0)), proof: items[0].proof };
+      // Der falsche Wert muss sich vom echten unterscheiden. Sonst wäre der Beweis gültig und der Test wäre zufällig rot.
+      const fake = M.toHex(M.encodeIndex(0)) === items[0].m ? 1 : 0;
+      items[0] = { m: M.toHex(M.encodeIndex(fake)), proof: items[0].proof };
       return { items };
     }
   };

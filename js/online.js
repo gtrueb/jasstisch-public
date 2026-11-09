@@ -551,11 +551,12 @@
 
     var mine = view.phase === 'play' && view.turnSeat === 0 && view.plays.length < (view.n || 4);
     view.legal = mine ? legalIds(hand, view.plays, view.trump) : [];
-    view.humanBest = (view.phase === 'play' && view.trickNo === 0 && !view.humanWeisDone) ? root.JassRules.weisTotal(hand) : null;
+    var wopts = { molo: S.gtype === 'molotov' };
+    view.humanBest = (view.phase === 'play' && view.trickNo === 0 && !view.humanWeisDone) ? root.JassRules.weisTotal(hand, wopts) : null;
     // Weis-Karten: alle Karten, nach denen Rang und Punkte bestimmt werden (Rang und Summe getrennt).
     var weisCards = [];
     if (view.humanBest) {
-      var best = root.JassRules.bestWeis(hand);
+      var best = root.JassRules.bestWeis(hand, wopts);
       var seen = {};
       (best ? best.cards : []).concat(view.humanBest.cards).forEach(function (c) {
         if (!seen[c.id]) { seen[c.id] = true; weisCards.push(c); }

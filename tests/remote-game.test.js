@@ -209,7 +209,7 @@ async function drive(opts) {
     const hand = truthHands[seat];
     const legal = (gtype === 'schieber'
       ? R.legalCards(hand, A.plays, A.trump)
-      : R.legalFree(hand, A.plays)).slice().sort((x, y) => (x.id < y.id ? -1 : 1));
+      : R.legalFree(hand, A.plays, A.trump)).slice().sort((x, y) => (x.id < y.id ? -1 : 1));
     const card = legal[0];
 
     truthHands[seat] = hand.filter((c) => c.id !== card.id);

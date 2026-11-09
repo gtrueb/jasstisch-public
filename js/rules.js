@@ -20,6 +20,11 @@
   // Rangfolge in Undenufe: umgekehrt. Die 6 ist die stärkste, das Ass die schwächste Karte.
   var ORDER_UND = { '6': 8, '7': 7, '8': 6, '9': 5, '10': 4, U: 3, O: 2, K: 1, A: 0 };
   var SEQ_PTS = { 3: 20, 4: 50, 5: 100 };
+  // Molotow: lange Folgen zählen mehr. 6-Blatt 150, 7-Blatt 200, 8-Blatt 250, 9-Blatt 300.
+  var SEQ_PTS_MOLO = { 3: 20, 4: 50, 5: 100, 6: 150, 7: 200, 8: 250, 9: 300 };
+  // opts.molo = true: Molotow (Folgen bis 9 Blatt). Ohne opts: Schieber (bis 5 Blatt).
+  function seqTable(opts) { return opts && opts.molo ? SEQ_PTS_MOLO : SEQ_PTS; }
+  function seqMax(opts) { return opts && opts.molo ? 9 : 5; }
   var WEIS_LABEL = { 5: 'Vierling', 4: '5-Blatt', 3: '4-Blatt', 2: '2× 3-Blatt', 1: '3-Blatt' };
   var LAST_TRICK_BONUS = 5;
   var MATCH_BONUS = 100;
@@ -112,13 +117,14 @@
   }
 
   // Beste Folgen in einer Liste von Karten (je Farbe, Läufe zerlegen).
-  function bestRunPieces(L) {
+  function bestRunPieces(L, opts) {
     var dp = [0], from = [null], p, n;
+    var table = seqTable(opts), maxN = seqMax(opts);
     for (p = 1; p <= L; p++) {
       dp[p] = dp[p - 1];
       from[p] = null;
-      for (n = 3; n <= 5 && n <= p; n++) {
-        var v = dp[p - n] + SEQ_PTS[n];
+      for (n = 3; n <= maxN && n <= p; n++) {
+        var v = dp[p - n] + table[n];
         if (v > dp[p]) { dp[p] = v; from[p] = n; }
       }
     }
@@ -131,8 +137,8 @@
     return pieces;
   }
 
-  function bestSequences(cards) {
-    var total = 0, melds = [];
+  function bestSequences(cards, opts) {
+    var total = 0, melds = [], table = seqTable(opts);
     SUITS.forEach(function (s) {
       var byIdx = {};
       cards.forEach(function (c) { if (c.s === s) byIdx[ORDER_PLAIN[c.r]] = c; });
@@ -142,11 +148,11 @@
         var j = i;
         while (j + 1 < idx.length && idx[j + 1] === idx[j] + 1) j++;
         var start = idx[i];
-        bestRunPieces(j - i + 1).forEach(function (pc) {
+        bestRunPieces(j - i + 1, opts).forEach(function (pc) {
           var cs = [];
           for (var k = 0; k < pc.n; k++) cs.push(byIdx[start + pc.off + k]);
-          total += SEQ_PTS[pc.n];
-          melds.push({ type: 'seq', cards: cs, pts: SEQ_PTS[pc.n], n: pc.n, top: start + pc.off + pc.n - 1, suit: s });
+          total += table[pc.n];
+          melds.push({ type: 'seq', cards: cs, pts: table[pc.n], n: pc.n, top: start + pc.off + pc.n - 1, suit: s });
         });
         i = j + 1;
       }
@@ -155,7 +161,7 @@
   }
 
   // Beste Weisen-Kombination einer Hand (Vier Gleiche + Folgen, keine Karte doppelt).
-  function bestMelds(hand) {
+  function bestMelds(hand, opts) {
     var fours = ['9', '10', 'U', 'O', 'K', 'A'].filter(function (r) {
       return hand.filter(function (c) { return c.r === r; }).length === 4;
     });
@@ -172,7 +178,7 @@
         }
       }
       var rest = hand.filter(function (c) { return !removed[c.id]; });
-      var seq = bestSequences(rest);
+      var seq = bestSequences(rest, opts);
       pts += seq.pts;
       melds = melds.concat(seq.melds);
       if (pts > best.pts) best = { pts: pts, melds: melds };
@@ -210,15 +216,16 @@
     if (!a) return false;
     if (!b) return true;
     if (a.cls !== b.cls) return a.cls > b.cls;
+    if (a.cls === 4 && a.n !== b.n) return a.n > b.n;   // längere Folge gewinnt (6-Blatt vor 5-Blatt)
     if (a.cls === 5 && a.pts !== b.pts) return a.pts > b.pts;
     return a.top > b.top;
   }
 
   // Beste Weisen-Kombination einer Hand. Gibt null zurück, wenn es keine gibt.
-  function bestWeis(hand) {
-    var best = null;
+  function bestWeis(hand, opts) {
+    var best = null, table = seqTable(opts), maxN = seqMax(opts);
     function consider(c) {
-      c.label = WEIS_LABEL[c.cls];
+      c.label = (c.cls === 4 && c.n > 5) ? c.n + '-Blatt' : WEIS_LABEL[c.cls];
       if (weisGreater(c, best)) best = c;
     }
     ['9', '10', 'U', 'O', 'K', 'A'].forEach(function (r) {
@@ -230,14 +237,14 @@
       var idx = {};
       hand.forEach(function (c) { if (c.s === s) idx[ORDER_PLAIN[c.r]] = c; });
       for (var st = 0; st <= 8; st++) {
-        for (var len = 3; len <= 5 && st + len - 1 <= 8; len++) {
+        for (var len = 3; len <= maxN && st + len - 1 <= 8; len++) {
           var cs = [], ok = true, k;
           for (k = 0; k < len; k++) {
             if (!idx[st + k]) { ok = false; break; }
             cs.push(idx[st + k]);
           }
           if (!ok) continue;
-          var cand = { cls: len === 5 ? 4 : (len === 4 ? 3 : 1), pts: SEQ_PTS[len], top: st + len - 1, cards: cs, suit: s };
+          var cand = { cls: len >= 5 ? 4 : (len === 4 ? 3 : 1), n: len, pts: table[len], top: st + len - 1, cards: cs, suit: s };
           if (len === 3) windows3.push(cand);
           else consider(cand);
         }
@@ -261,8 +268,8 @@
   // Alle Weisen eines Spielers zusammen: Summe der Punkte (keine Karte doppelt).
   // Gewinner wird nur nach dem besten Weis bestimmt, die Punkte zählen aber alle.
   // Rückgabe null, wenn kein Weis.
-  function weisTotal(hand) {
-    var m = bestMelds(hand);
+  function weisTotal(hand, opts) {
+    var m = bestMelds(hand, opts);
     if (!m.melds.length || m.pts <= 0) return null;
     var melds = m.melds.map(function (x) {
       return { label: x.type === 'four' ? 'Vierling' : (x.n + '-Blatt'), pts: x.pts, cards: x.cards };
@@ -293,15 +300,30 @@
     return bestMelds(cards).pts;
   }
 
+  // Höchster Trumpf, der in diesem Stich liegt. Null, wenn noch niemand mit Trumpf gestochen hat.
+  function topTrumpOf(plays, trump) {
+    var top = null;
+    plays.forEach(function (p) {
+      if (p.card.s === trump && (top === null || ORDER_TRUMP[p.card.r] > ORDER_TRUMP[top.r])) top = p.card;
+    });
+    return top;
+  }
+
   // Molotow: jeder bedient die Farbe, wenn er kann. Sonst darf er jede Karte spielen.
-  // Ist eine Farbe Trumpf, darf man deren Karten immer spielen, auch wenn man die Farbe bedienen kann.
+  // Ist eine Farbe Trumpf, darf man statt der Farbe auch eine Trumpfkarte legen (abstechen).
+  // Hat schon jemand mit Trumpf gestochen, darf man nur noch höhere Trümpfe legen (kein Untertrumpfen).
   function legalFree(hand, plays, trump) {
     if (!plays.length) return hand.slice();
     var led = plays[0].card.s;
     var follow = hand.filter(function (c) { return c.s === led; });
-    if (!follow.length) return hand.slice();
-    if (trump == null) return follow;
-    return hand.filter(function (c) { return c.s === led || c.s === trump; });
+    var hasTrump = trump !== null && trump !== undefined;
+    if (!hasTrump || led === trump) return follow.length ? follow : hand.slice();
+    var top = topTrumpOf(plays, trump);
+    var trumpOk = function (c) { return c.s === trump && (!top || beats(c, top, led, trump, false)); };
+    if (follow.length) return hand.filter(function (c) { return c.s === led || trumpOk(c); });
+    if (!top) return hand.slice();
+    var allowed = hand.filter(function (c) { return c.s !== trump || trumpOk(c); });
+    return allowed.length ? allowed : hand.slice();
   }
 
   var api = {

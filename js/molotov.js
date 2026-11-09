@@ -294,7 +294,7 @@
   // Karte spielen (lokaler Platz).
   Game.prototype.playCard = function (seat, card) {
     if (this.phase !== 'play' || this.turnSeat() !== seat || this.isRemote(seat)) return false;
-    var legal = R.legalFree(this.hands[seat], this.plays);
+    var legal = R.legalFree(this.hands[seat], this.plays, this.trump);
     if (!legal.some(function (c) { return c.id === card.id; })) return false;
     return this.commitPlay(seat, card, {}, function () {
       this.hands[seat] = this.hands[seat].filter(function (c) { return c.id !== card.id; });
@@ -585,7 +585,7 @@
   Game.prototype.legalFor = function (seat) {
     if (this.phase !== 'play' || this.turnSeat() !== seat || this.plays.length === 4) return [];
     if (this.isRemote(seat)) return [];   // wird auf dem Gerät des Spielers berechnet
-    return R.legalFree(this.hands[seat], this.plays).map(function (c) { return c.id; });
+    return R.legalFree(this.hands[seat], this.plays, this.trump).map(function (c) { return c.id; });
   };
 
   Game.prototype.humanWeisIds = function (seat) {

@@ -35,3 +35,29 @@ test('Ausspielen: jede Karte ist erlaubt', () => {
   const hand = [card(1, 'eichel', 'A'), card(2, 'rose', '7')];
   assert.deepEqual(ids(R.legalFree(hand, [], 'eichel')), [1, 2]);
 });
+
+// Stich: Rose wurde ausgespielt, dann hat Platz 1 mit Eichel K gestochen.
+const trumped = [{ seat: 0, card: card(99, 'rose', '8') }, { seat: 1, card: card(98, 'eichel', 'K') }];
+
+test('Nach einem Stich mit Trumpf: bedienen oder höheren Trumpf legen, kein Untertrumpfen', () => {
+  // Hand: Rose 7 (bedient), Eichel 10 (niedriger, verboten), Eichel A (höher, erlaubt)
+  const hand = [card(2, 'rose', '7'), card(3, 'eichel', '10'), card(4, 'eichel', 'A')];
+  assert.deepEqual(ids(R.legalFree(hand, trumped, 'eichel')), [2, 4]);
+});
+
+test('Nach einem Stich mit Trumpf, ohne Farbe: Untertrumpfen verboten, andere Karten erlaubt', () => {
+  // Hand: Schelle 7 (frei), Eichel 10 (zu niedrig), Eichel 9 (höher, erlaubt)
+  const hand = [card(5, 'schelle', '7'), card(3, 'eichel', '10'), card(6, 'eichel', '9')];
+  assert.deepEqual(ids(R.legalFree(hand, trumped, 'eichel')), [5, 6]);
+});
+
+test('Nach einem Stich mit Trumpf, ohne Farbe, nur niedrige Trümpfe: alles bleibt erlaubt', () => {
+  const hand = [card(7, 'eichel', '6')];
+  assert.deepEqual(ids(R.legalFree(hand, trumped, 'eichel')), [7]);
+});
+
+test('Noch kein Trumpf im Stich: abstechen mit jedem Trumpf erlaubt', () => {
+  const onlyRose = [{ seat: 0, card: card(99, 'rose', '8') }];
+  const hand = [card(5, 'schelle', '7'), card(3, 'eichel', '10')];
+  assert.deepEqual(ids(R.legalFree(hand, onlyRose, 'eichel')), [5, 3]);
+});

@@ -257,8 +257,8 @@
     this.weisDecided[seat] = true;
     var seen = {};
     cards = cards.filter(function (c) { if (seen[c.id]) return false; seen[c.id] = true; return true; });
-    var best = R.bestWeis(cards);
-    var total = best ? R.weisTotal(cards) : null;
+    var best = R.bestWeis(cards, { molo: true });
+    var total = best ? R.weisTotal(cards, { molo: true }) : null;
     if (best && total) this.weisAnn.push({ seat: seat, best: best, total: total, order: ++this.annCounter });
     this.lastEvent = total ? { type: 'weis', seat: seat, label: total.label, pts: total.pts } : this.lastEvent;
     return !!best;
@@ -592,14 +592,14 @@
     if (seat === undefined) seat = this.humanSeat;
     if (this.phase !== 'play' || this.trickNo !== 0 || this.turnSeat() !== seat || this.weisDecided[seat]) return [];
     if (this.isRemote(seat)) return [];
-    var t = R.weisTotal(this.hands[seat] || []);
+    var t = R.weisTotal(this.hands[seat] || [], { molo: true });
     return t ? t.cards.map(function (c) { return c.id; }) : [];
   };
 
   Game.prototype.humanBestWeis = function (seat) {
     if (seat === undefined) seat = this.humanSeat;
     if (this.isRemote(seat)) return null;
-    return R.weisTotal(this.hands[seat] || []);
+    return R.weisTotal(this.hands[seat] || [], { molo: true });
   };
 
   Game.prototype.stateForUI = function (seat) {

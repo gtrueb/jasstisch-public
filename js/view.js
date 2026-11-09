@@ -50,6 +50,10 @@
     v.humanWeisDone = st.humanWeisDone;
     v.humanWeisIds = st.humanWeisIds || [];
     v.legal = st.legal || [];
+    // Mensch oder KI je Platz (Index = Platz aus Sicht des Empfängers)
+    var hs = st.humanSeats || [0];
+    v.human = [];
+    for (var hi = 0; hi < n; hi++) v.human.push(hs.indexOf((hi + me) % n) >= 0);
     v.tischEvents = (st.tischEvents || []).map(function (e) { return Object.assign({}, e, { seat: sm(e.seat) }); });
     v.lastEvent = st.lastEvent ? Object.assign({}, st.lastEvent, { seat: sm(st.lastEvent.seat) }) : null;
     v.cfg = st.cfg;

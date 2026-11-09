@@ -15,6 +15,10 @@
   var ORDER_PLAIN = { '6': 0, '7': 1, '8': 2, '9': 3, '10': 4, U: 5, O: 6, K: 7, A: 8 };
   // Obenabe (ohne Trumpf): 8 zählt 8 Punkte. Summe über alle Karten = 152.
   var PTS_OBENABE = { A: 11, '10': 10, K: 4, O: 3, U: 2, '8': 8, '9': 0, '7': 0, '6': 0 };
+  // Undenufe (Molotow): die 6 zählt wie das Ass in Obenabe (11), das Ass zählt nichts. Summe bleibt 152.
+  var PTS_UNDENUFE = { '6': 11, '10': 10, K: 4, O: 3, U: 2, '8': 8, '9': 0, '7': 0, A: 0 };
+  // Rangfolge in Undenufe: umgekehrt. Die 6 ist die stärkste, das Ass die schwächste Karte.
+  var ORDER_UND = { '6': 8, '7': 7, '8': 6, '9': 5, '10': 4, U: 3, O: 2, K: 1, A: 0 };
   var SEQ_PTS = { 3: 20, 4: 50, 5: 100 };
   var WEIS_LABEL = { 5: 'Vierling', 4: '5-Blatt', 3: '4-Blatt', 2: '2× 3-Blatt', 1: '3-Blatt' };
   var LAST_TRICK_BONUS = 5;
@@ -38,34 +42,35 @@
     return a;
   }
 
-  // trump === null bedeutet Obenabe (kein Trumpf gesetzt)
-  function cardPoints(c, trump) {
-    if (trump === null || trump === undefined) return PTS_OBENABE[c.r];
+  // trump === null bedeutet Obenabe (kein Trumpf gesetzt). und=true: Undenufe (nur ohne Trumpf).
+  function cardPoints(c, trump, und) {
+    if (trump === null || trump === undefined) return und ? PTS_UNDENUFE[c.r] : PTS_OBENABE[c.r];
     return c.s === trump ? PTS_TRUMP[c.r] : PTS_PLAIN[c.r];
   }
 
-  function trickPoints(cards, trump) {
+  function trickPoints(cards, trump, und) {
     var n = 0;
-    cards.forEach(function (c) { n += cardPoints(c, trump); });
+    cards.forEach(function (c) { n += cardPoints(c, trump, und); });
     return n;
   }
 
   // Gibt true zurück, wenn Karte c die Karte cur im Stich schlägt.
-  function beats(c, cur, led, trump) {
+  function beats(c, cur, led, trump, und) {
     var ct = c.s === trump, cut = cur.s === trump;
     if (ct !== cut) return ct;
     if (ct) return ORDER_TRUMP[c.r] > ORDER_TRUMP[cur.r];
     var cl = c.s === led, curl = cur.s === led;
     if (cl !== curl) return cl;
     if (!cl) return false;
-    return ORDER_PLAIN[c.r] > ORDER_PLAIN[cur.r];
+    var order = (und && (trump === null || trump === undefined)) ? ORDER_UND : ORDER_PLAIN;
+    return order[c.r] > order[cur.r];
   }
 
   // plays: [{seat, card}] in Spielreihenfolge. Gibt den Index der Gewinnerkarte zurück.
-  function winnerIndex(plays, trump) {
+  function winnerIndex(plays, trump, und) {
     var led = plays[0].card.s, best = 0;
     for (var i = 1; i < plays.length; i++) {
-      if (beats(plays[i].card, plays[best].card, led, trump)) best = i;
+      if (beats(plays[i].card, plays[best].card, led, trump, und)) best = i;
     }
     return best;
   }

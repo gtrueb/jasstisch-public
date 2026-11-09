@@ -174,6 +174,15 @@
 
   function nameOf(seat) { return curNames[seat]; }
 
+  // Texte für Undenufe / Obenabe (Modus) und Slalom (Wechsel zwischen den beiden).
+  function modeName(m) { return m === 'undenufe' ? 'Undenufe' : 'Obenabe'; }
+  function modeMsg(ev) {
+    return (ev.seat === 0 ? 'Du setzt ' : nameOf(ev.seat) + ' setzt ') + modeName(ev.mode);
+  }
+  function slalomMsg(ev) {
+    return 'Slalom! ' + (ev.seat === 0 ? 'Du wechselst' : nameOf(ev.seat) + ' wechselt') + ' auf ' + modeName(ev.mode) + ' (-20)';
+  }
+
   function renderCenter(st, settings) {
     var msg = '';
     var ev = st.lastEvent;
@@ -188,6 +197,8 @@
       else msg = nameOf(st.turnSeat) + ' ist dran';
       if (ev && ev.type === 'trump') msg = (ev.seat === 0 ? 'Du bestimmst' : nameOf(ev.seat) + ' bestimmt') + ' den Trumpf: ' + SUIT_LABEL[ev.suit];
       if (ev && ev.type === 'stoeck') msg = 'Stöck von ' + nameOf(ev.seat);
+      if (ev && ev.type === 'mode') msg = modeMsg(ev);
+      if (ev && ev.type === 'slalom') msg = slalomMsg(ev);
     }
     $('felt-msg').textContent = msg;
 
@@ -211,7 +222,7 @@
     var badge = $('trumpbadge');
     badge.innerHTML = st.trump
       ? '<span class="suit-' + st.trump + '">' + ICON[st.trump] + '</span> ' + SUIT_LABEL[st.trump]
-      : 'Obenabe';
+      : (st.undenufe ? 'Undenufe' : 'Obenabe');
     badge.className = 'trumpbadge' + (st.trump ? ' suit-' + st.trump : '');
   }
 
@@ -242,6 +253,13 @@
     if (ev && ev.type === 'trump') {
       var tkey = st.history.length + '-' + ev.suit;
       if (tkey !== seen.trump) { seen.trump = tkey; FX.toast((ev.seat === 0 ? 'Du bestimmst' : nameOf(ev.seat) + ' bestimmt') + ' den Trumpf: ' + SUIT_LABEL[ev.suit], 'trump'); }
+    }
+    if (ev && (ev.type === 'mode' || ev.type === 'slalom')) {
+      var mkey = ev.type + '-' + ev.seat + '-' + ev.mode + '-' + st.history.length + '-' + st.trickNo;
+      if (mkey !== seen.mode) {
+        seen.mode = mkey;
+        FX.toast(ev.type === 'slalom' ? slalomMsg(ev) : modeMsg(ev), 'trump');
+      }
     }
   }
 
@@ -310,7 +328,7 @@
 
   function renderHistory(st) {
     var rows = st.history.map(function (h) {
-      return '<tr><td>' + h.round + '</td><td>' + (h.trump ? '<span class="suit-' + h.trump + '">' + ICON[h.trump] + '</span>' : 'Obenabe') + '</td>' +
+      return '<tr><td>' + h.round + '</td><td>' + (h.trump ? '<span class="suit-' + h.trump + '">' + ICON[h.trump] + '</span>' : (h.mode === 'undenufe' ? 'Undenufe' : 'Obenabe')) + '</td>' +
         h.tallies.slice(0, st.n).map(function (t) { return '<td>' + t + '</td>'; }).join('') + '</tr>';
     }).join('');
     var heads = curNames.slice(0, st.n).map(function (x) { return '<th>' + esc(x) + '</th>'; }).join('');
@@ -355,7 +373,9 @@
     if (sc.tisch.some(Boolean)) extra += row('Tischweis', sc.tisch);
     if (sc.weis.some(Boolean)) extra += row('Weisen (Minus)', sc.weis);
     if (sc.stoeck.some(Boolean)) extra += row('Stöck (Minus)', sc.stoeck);
-    var pillText = sc.trump ? 'Trumpf: ' + SUIT_LABEL[sc.trump] : 'Obenabe (kein Trumpf)';
+    if (sc.slalom && sc.slalom.some(Boolean)) extra += row('Slalom (Minus)', sc.slalom);
+    var pillText = sc.trump ? 'Trumpf: ' + SUIT_LABEL[sc.trump]
+      : (sc.mode === 'undenufe' ? 'Undenufe (kein Trumpf)' : 'Obenabe (kein Trumpf)');
     var rule = over ? '' : '<p class="muted">Striche = Punkte auf 10 gerundet, durch 10 geteilt</p>';
     var weisBlock = (sc.weisCards && sc.weisCards.length)
       ? '<div class="modal-weis"><b>Weis von ' + esc(nameOf(sc.weisSeat)) + ' (Minus ' + sc.weisPts + ')</b>' +
@@ -419,7 +439,8 @@
       rounds: e === 'rounds12' ? 12 : 8,
       weis: $('opt-weis').checked,
       stoeck: $('opt-stoeck').checked,
-      lastTrick: $('opt-last').checked
+      lastTrick: $('opt-last').checked,
+      undenufe: $('opt-undenufe') ? $('opt-undenufe').checked : true
     };
   }
 
@@ -440,6 +461,7 @@
       weis: settings.weis,
       stoeck: settings.stoeck,
       lastTrick: settings.lastTrick,
+      undenufe: settings.undenufe !== false,
       onUpdate: render
     });
     game.humanSeat = 0;

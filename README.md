@@ -2,6 +2,10 @@
 
 Kleines Jass-Spiel im Browser. Gegen den Computer. Keine Installation nötig.
 
+**Jetzt spielen:** https://gtrueb.github.io/jasstisch-public/
+
+![Schieber am Jasstisch: vier Spieler, der Tisch und die Jasstafel](assets/screenshot.png)
+
 ## Starten
 
 Doppelklick auf `index.html` oder den lokalen Server starten:
@@ -91,3 +95,12 @@ Grenzen:
 Die Zeiten stehen in `js/game.js` (`DEFAULT_DELAYS`). Sie wurden an jassli.ch angepasst:
 ca. 10 bis 12 Sekunden pro Stich, ca. 2,5 bis 3 Sekunden pro Karte der KI.
 Für Tests kann man `?speed=20` an die URL hängen. Dann läuft alles 20-mal schneller.
+
+## Lizenz
+
+Der Code steht unter der MIT-Lizenz, siehe [LICENSE](LICENSE).
+
+Nicht Teil der MIT-Lizenz:
+
+- Farbsymbole in `assets/suits/`: Lizenzen und Quellen stehen in [assets/suits/CREDITS.md](assets/suits/CREDITS.md) (CC BY-SA und gemeinfrei).
+- Kartenbilder in `assets/cards/`.
